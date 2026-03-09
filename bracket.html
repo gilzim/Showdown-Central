@@ -1,0 +1,1279 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Great Burgeranch Showdown</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --surface: #1e293b;
+            --surface-hover: #334155;
+            --primary: #3b82f6;
+            --primary-hover: #2563eb;
+            --accent: #10b981;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --border: #334155;
+            --glass-bg: rgba(30, 41, 59, 0.7);
+            --glass-border: rgba(255, 255, 255, 0.1);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            background-image: 
+                radial-gradient(at 0% 0%, hsla(253,16%,7%,1) 0, transparent 50%), 
+                radial-gradient(at 50% 0%, hsla(225,39%,30%,0.2) 0, transparent 50%), 
+                radial-gradient(at 100% 0%, hsla(339,49%,30%,0.2) 0, transparent 50%);
+            background-attachment: fixed;
+            color: var(--text-main);
+            font-family: 'Outfit', sans-serif;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 40px 20px;
+        }
+
+        h1 {
+            font-size: 3rem;
+            font-weight: 800;
+            background: linear-gradient(to right, #60a5fa, #a78bfa);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 40px;
+            text-align: center;
+            text-shadow: 0 4px 20px rgba(96, 165, 250, 0.2);
+        }
+
+        .container {
+            display: flex;
+            flex-direction: column;
+            width: 100%;
+            max-width: 96%; /* Expanded to fit screen much better */
+            gap: 40px;
+        }
+
+        /* Table Section */
+        .roster-section {
+            background: var(--glass-bg);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid var(--glass-border);
+            border-radius: 16px;
+            padding: 30px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            width: 100%;
+            overflow-x: auto;
+        }
+
+        .roster-section h2 {
+            font-size: 1.5rem;
+            margin-bottom: 20px;
+            color: var(--text-main);
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .roster-section h2::before {
+            content: '';
+            display: block;
+            width: 4px;
+            height: 24px;
+            background: var(--primary);
+            border-radius: 2px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+        }
+
+        th, td {
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        th {
+            color: var(--text-muted);
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: 0.85rem;
+            letter-spacing: 0.05em;
+            background: rgba(0,0,0,0.1);
+        }
+        
+        tr.dragging {
+            opacity: 0.4;
+            background: rgba(255, 255, 255, 0.1) !important;
+        }
+        
+        tr.drag-over {
+            border-top: 2px solid var(--primary) !important;
+            background: rgba(59, 130, 246, 0.1) !important;
+        }
+
+        tr:hover td {
+            background: rgba(255, 255, 255, 0.02);
+        }
+        
+        tr:last-child td {
+            border-bottom: none;
+        }
+
+        td input {
+            background: transparent;
+            border: 1px solid transparent;
+            color: var(--text-main);
+            font-family: 'Outfit', sans-serif;
+            font-size: 1rem;
+            width: 100%;
+            padding: 8px;
+            border-radius: 6px;
+            transition: all 0.2s ease;
+        }
+
+        td input:hover, td input:focus {
+            background: rgba(0, 0, 0, 0.2);
+            border-color: var(--border);
+            outline: none;
+        }
+
+        /* Bracket Section */
+        .bracket-wrapper {
+            background: var(--glass-bg);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid var(--glass-border);
+            border-radius: 16px;
+            padding: 40px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            overflow-x: auto;
+        }
+
+        .bracket-wrapper h2 {
+            font-size: 1.5rem;
+            color: var(--text-main);
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .bracket-wrapper h2::before {
+            content: '';
+            display: block;
+            width: 4px;
+            height: 24px;
+            background: var(--accent);
+            border-radius: 2px;
+        }
+
+        .bracket-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 50px;
+        }
+
+        .bracket-zoom-controls {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .zoom-btn {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            color: var(--text-main);
+            width: 32px;
+            height: 32px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 1.2rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease;
+        }
+
+        .zoom-btn:hover {
+            border-color: var(--primary);
+            background: rgba(59, 130, 246, 0.1);
+        }
+
+        .bracket-scroller {
+            overflow-x: auto;
+            overflow-y: hidden;
+            padding-bottom: 20px;
+        }
+
+        .bracket {
+            display: flex;
+            gap: 40px;
+            justify-content: space-between;
+            min-width: max-content;
+            transform-origin: top left;
+            transition: transform 0.2s ease;
+        }
+
+        .round {
+            display: flex;
+            flex-direction: column;
+            justify-content: space-around;
+            min-height: 500px; /* responsive rather than fixed 600px */
+            width: 240px;
+            position: relative;
+            gap: 20px;
+        }
+
+        .round h3 {
+            text-align: center;
+            color: var(--text-muted);
+            font-size: 1.1rem;
+            margin-bottom: 20px;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            position: absolute;
+            top: -40px;
+            width: 100%;
+            font-weight: 600;
+        }
+
+        .matchup {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 10px;
+            width: 100%;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
+            transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+            position: relative;
+            z-index: 2;
+        }
+
+        .matchup:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.4);
+            border-color: #64748b;
+        }
+
+        /* Bracket Connectors */
+        .round:not(:last-child) .matchup::after {
+            content: '';
+            position: absolute;
+            right: -20px;
+            top: 50%;
+            width: 20px;
+            height: 2px;
+            background: var(--border);
+            z-index: 1;
+        }
+
+        .round:not(:first-child) .matchup::before {
+            content: '';
+            position: absolute;
+            left: -20px;
+            top: 50%;
+            width: 20px;
+            height: 2px;
+            background: var(--border);
+            z-index: 1;
+        }
+
+        .team-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 6px;
+            border-radius: 8px;
+            transition: background 0.2s;
+        }
+        
+        .team-row:hover {
+            background: rgba(255,255,255,0.04);
+        }
+
+        .team-row:not(:last-child) {
+            border-bottom: 1px solid var(--border);
+            margin-bottom: 2px;
+        }
+
+        .team-name-input {
+            background: transparent;
+            border: none;
+            color: var(--text-main);
+            font-weight: 600;
+            font-size: 1rem;
+            width: 120px;
+            font-family: inherit;
+        }
+
+        .team-name-input:focus {
+            outline: none;
+            color: var(--primary);
+        }
+        
+        .team-name-input::placeholder {
+            color: var(--text-muted);
+            font-weight: 400;
+        }
+
+        .score-input {
+            background: rgba(0,0,0,0.3);
+            border: 1px solid transparent;
+            color: var(--text-main);
+            width: 36px;
+            height: 32px;
+            text-align: center;
+            border-radius: 6px;
+            font-weight: bold;
+            font-family: inherit;
+            margin-right: 8px;
+            transition: border-color 0.2s, background 0.2s;
+        }
+
+        .score-input:focus {
+            outline: none;
+            border-color: var(--primary);
+            background: rgba(0,0,0,0.5);
+        }
+
+        /* Remove arrows from number input */
+        .score-input::-webkit-outer-spin-button,
+        .score-input::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+        .score-input[type=number] {
+            -moz-appearance: textfield;
+            appearance: textfield;
+        }
+
+        button.advance {
+            background: var(--primary);
+            border: none;
+            color: white;
+            cursor: pointer;
+            border-radius: 6px;
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.2s, transform 0.1s;
+        }
+
+        button.advance:hover { 
+            background: var(--primary-hover); 
+        }
+
+        button.advance:active {
+            transform: scale(0.95);
+        }
+
+        button.advance svg {
+            width: 18px;
+            height: 18px;
+            fill: none;
+            stroke: currentColor;
+            stroke-width: 2.5;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+        }
+
+        .winner-box {
+            text-align: center;
+            background: linear-gradient(135deg, rgba(16, 185, 129, 0.1), rgba(16, 185, 129, 0.05));
+            border: 2px solid var(--accent);
+            padding: 30px 20px;
+            border-radius: 16px;
+            box-shadow: 0 0 30px rgba(16, 185, 129, 0.2);
+            position: relative;
+        }
+
+        .winner-box input {
+            background: transparent;
+            border: none;
+            color: var(--accent);
+            font-size: 1.8rem;
+            font-weight: 800;
+            text-align: center;
+            width: 100%;
+            font-family: inherit;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .winner-box input:focus {
+            outline: none;
+        }
+        
+        /* Settings Section */
+        .settings-section {
+            display: flex;
+            align-items: center;
+            justify-content: flex-start;
+            gap: 15px;
+            background: var(--glass-bg);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid var(--glass-border);
+            border-radius: 12px;
+            padding: 15px 25px;
+            box-shadow: 0 10px 20px -5px rgba(0, 0, 0, 0.3);
+            width: fit-content;
+            margin-bottom: -10px; /* pull closer to roster */
+        }
+
+        .settings-section label {
+            color: var(--text-muted);
+            font-weight: 600;
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        select {
+            background: var(--surface);
+            color: var(--text-main);
+            border: 1px solid var(--border);
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-family: inherit;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            outline: none;
+            appearance: none;
+            /* custom arrow */
+            background-image: url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%2394a3b8%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E");
+            background-repeat: no-repeat;
+            background-position: right 12px top 50%;
+            background-size: 10px auto;
+            padding-right: 30px;
+        }
+
+        select:hover, select:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+        }
+
+        .randomize-btn {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--border);
+            color: var(--text-main);
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-family: inherit;
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.2s ease;
+        }
+
+        .randomize-btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: var(--text-muted);
+        }
+
+        .randomize-btn:active {
+            transform: scale(0.95);
+        }
+
+        .randomize-btn svg {
+            width: 16px;
+            height: 16px;
+        }
+
+        .winner-box::before {
+            content: '👑';
+            font-size: 2rem;
+            position: absolute;
+            top: -20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--bg-color);
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Great Burgeranch Showdown</h1>
+
+    <div class="container">
+        <!-- Settings Section -->
+        <div class="settings-section">
+            <label for="team-count">Number of Teams:</label>
+            <select id="team-count" onchange="changeTeamCount(this.value)">
+                <option value="2">2 Teams</option>
+                <option value="4">4 Teams</option>
+                <option value="6">6 Teams</option>
+                <option value="8" selected>8 Teams</option>
+                <option value="16">16 Teams</option>
+                <option value="32">32 Teams</option>
+            </select>
+            <button class="randomize-btn" onclick="randomizeTeams()" title="Shuffle Seeding">
+                <svg viewBox="0 0 24 24"><path d="M16 3h5v5M4 20L21 3M21 16v5h-5M15 15l6 6M4 4l5 5" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                Randomize
+            </button>
+            <button class="randomize-btn" style="border-color: #f59e0b; color: #f59e0b;" onclick="resetBracketOnly()" title="Wipe bracket scores and progress but keep the teams">
+                <svg viewBox="0 0 24 24"><path d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                Reset Bracket
+            </button>
+            <button class="randomize-btn" style="border-color: #ef4444; color: #ef4444;" onclick="newTournament()" title="Start a completely new tournament">
+                <svg viewBox="0 0 24 24"><path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2M10 11v6M14 11v6" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                New Tournament
+            </button>
+            <div style="width: 2px; height: 24px; background: var(--border); margin: 0 10px;"></div>
+            <button class="randomize-btn" style="border-color: #10b981; color: #10b981;" onclick="exportBracket()" title="Download bracket data">
+                <svg viewBox="0 0 24 24"><path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                Export
+            </button>
+            <button class="randomize-btn" style="border-color: #3b82f6; color: #3b82f6;" onclick="document.getElementById('import-file').click()" title="Load bracket data from file">
+                <svg viewBox="0 0 24 24"><path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                Import
+            </button>
+            <input type="file" id="import-file" style="display: none;" accept=".json" onchange="importBracket(event)">
+        </div>
+        
+        <!-- Roster / Teams Section -->
+        <div class="roster-section">
+            <h2>Tournament Roster</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th style="width: 50px;">Seed</th>
+                        <th style="width: 30%;">Team Name</th>
+                        <th>Player 1</th>
+                        <th>Player 2</th>
+                    </tr>
+                </thead>
+                <tbody id="roster-body">
+                    <!-- JavaScript will populate this -->
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Bracket Section -->
+        <div class="bracket-wrapper">
+            <div class="bracket-header">
+                <h2>Tournament Bracket</h2>
+                <div class="bracket-zoom-controls">
+                    <span style="color: var(--text-muted); font-size: 0.9rem;">Zoom:</span>
+                    <button class="zoom-btn" onclick="zoomBracket(-0.1)" title="Zoom Out">-</button>
+                    <button class="zoom-btn" onclick="zoomBracket(0.1)" title="Zoom In">+</button>
+                    <button class="zoom-btn" onclick="zoomBracket(0)" style="font-size: 0.9rem; width: auto; padding: 0 10px;" title="Reset Zoom">Reset</button>
+                </div>
+            </div>
+            
+            <div class="bracket-scroller">
+                <div class="bracket" id="bracket-container">
+                    <!-- JavaScript will populate this -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Zoom Logic
+        let currentZoom = 1;
+        function zoomBracket(amount) {
+            if (amount === 0) currentZoom = 1;
+            else currentZoom = Math.max(0.4, Math.min(2.0, currentZoom + amount));
+            
+            const bracket = document.getElementById("bracket-container");
+            if(bracket) {
+                bracket.style.transform = `scale(${currentZoom})`;
+                // Adjust margin bottom to fix container bounds after scaling, rough estimation
+                const diff = 1 - currentZoom;
+                if(diff > 0) {
+                    bracket.style.marginBottom = `-${diff * 100}%`;
+                } else {
+                    bracket.style.marginBottom = '0';
+                }
+            }
+        }
+
+        let teamsCount = 8;
+        let teams = [];
+
+        function initTeams(count) {
+            teamsCount = parseInt(count);
+            teams = [];
+            for (let i = 0; i < teamsCount; i++) {
+                teams.push({ 
+                    name: `Team ${String.fromCharCode(65 + i)}`, 
+                    p1: "", 
+                    p2: "" 
+                });
+            }
+            renderRoster();
+            renderBracket();
+            saveState();
+        }
+
+        function changeTeamCount(count) {
+            if (confirm(`Changing the team count to ${count} will clear roster names and reset the tournament. Are you sure?`)) {
+                initTeams(count);
+            } else {
+                // Revert select back to previous value if Cancel is clicked
+                document.getElementById('team-count').value = teamsCount; 
+            }
+        }
+
+        function newTournament() {
+            if (confirm("Are you sure you want to completely erase the roster and bracket? This cannot be undone.")) {
+                localStorage.removeItem('burgeranchTournamentState');
+                // Reset to default 8
+                document.getElementById('team-count').value = "8";
+                initTeams(8); 
+            }
+        }
+
+        function resetBracketOnly() {
+            if (confirm("Are you sure you want to reset all bracket scores and progress? Your roster will be kept.")) {
+                renderBracket(); // Force regenerate fresh bracket from current roster
+                saveState();
+            }
+        }
+
+        function randomizeTeams() {
+            // Shuffle teams array using Fisher-Yates
+            for (let i = teams.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [teams[i], teams[j]] = [teams[j], teams[i]];
+            }
+            renderRoster();
+            renderBracket();
+        }
+
+        // State Persistence Logic
+        function saveState() {
+            // Harvest current scores before saving
+            // Roster names
+            teams.forEach((t, i) => {
+                const rsName = document.querySelector(`#roster-body tr:nth-child(${i+1}) td:nth-child(2) input`);
+                const rsP1 = document.querySelector(`#roster-body tr:nth-child(${i+1}) td:nth-child(3) input`);
+                const rsP2 = document.querySelector(`#roster-body tr:nth-child(${i+1}) td:nth-child(4) input`);
+                if(rsName) t.name = rsName.value;
+                if(rsP1) t.p1 = rsP1.value;
+                if(rsP2) t.p2 = rsP2.value;
+            });
+            
+            // Bracket values
+            bracketNodes.forEach(node => {
+                const t1Input = document.getElementById(`${node.id}-t1`);
+                const t2Input = document.getElementById(`${node.id}-t2`);
+                if (t1Input) {
+                    node.t1_val = t1Input.value;
+                    const score1 = t1Input.nextElementSibling;
+                    if(score1 && score1.classList.contains('score-input')) node.t1_score = score1.value;
+                }
+                if (t2Input) {
+                    node.t2_val = t2Input.value;
+                    const score2 = t2Input.nextElementSibling;
+                    if(score2 && score2.classList.contains('score-input')) node.t2_score = score2.value;
+                }
+            });
+
+            const champInput = document.getElementById('champion');
+            const champVal = champInput ? champInput.value : "TBD";
+
+            const state = {
+                teamsCount: teamsCount,
+                teams: teams,
+                bracketNodes: bracketNodes,
+                sixTeamLosers: sixTeamLosers,
+                champion: champVal
+            };
+            
+            localStorage.setItem('burgeranchTournamentState', JSON.stringify(state));
+        }
+
+        function loadState() {
+            const savedState = localStorage.getItem('burgeranchTournamentState');
+            if (savedState) {
+                try {
+                    const state = JSON.parse(savedState);
+                    teamsCount = state.teamsCount;
+                    teams = state.teams;
+                    bracketNodes = state.bracketNodes || [];
+                    sixTeamLosers = state.sixTeamLosers || [];
+                    
+                    document.getElementById('team-count').value = teamsCount;
+                    
+                    renderRoster();
+                    
+                    // If bracketNodes are saved, we can rebuild the DOM identically
+                    if (bracketNodes.length > 0) {
+                        rebuildBracketFromState(state.champion);
+                    } else {
+                        renderBracket(); 
+                    }
+                    return true;
+                } catch(e) {
+                    console.error("Failed to load state", e);
+                }
+            }
+            return false;
+        }
+
+        function exportBracket() {
+            saveState(); // Ensure we export the absolute latest
+            const stateStr = localStorage.getItem('burgeranchTournamentState');
+            if (!stateStr) {
+                alert("Nothing to export yet!");
+                return;
+            }
+            const blob = new Blob([stateStr], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `burgeranch-bracket-${new Date().toISOString().split('T')[0]}.json`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        function importBracket(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const contents = e.target.result;
+                    // Validate JSON
+                    const state = JSON.parse(contents);
+                    if (state.teamsCount && state.teams) {
+                        localStorage.setItem('burgeranchTournamentState', contents);
+                        loadState();
+                        alert("Bracket successfully loaded!");
+                    } else {
+                        throw new Error("Invalid bracket file format");
+                    }
+                } catch (err) {
+                    alert("Error loading file: " + err.message);
+                }
+                // Reset file input so same file can be loaded again if needed
+                event.target.value = '';
+            };
+            reader.readAsText(file);
+        }
+
+        function triggerSave() {
+            setTimeout(saveState, 50); // Small delay to let DOM update
+        }
+
+        // Initialize table
+        function renderRoster() {
+            const tbody = document.getElementById("roster-body");
+            tbody.innerHTML = "";
+            teams.forEach((team, index) => {
+                const tr = document.createElement("tr");
+                tr.draggable = true;
+                tr.ondragstart = (e) => handleDragStart(e, index);
+                tr.ondragend = (e) => { e.target.classList.remove('dragging'); draggedRowIndex = null; };
+                tr.ondragover = (e) => handleDragOver(e);
+                tr.ondragenter = (e) => handleDragEnter(e);
+                tr.ondragleave = (e) => handleDragLeave(e);
+                tr.ondrop = (e) => handleDrop(e, index);
+                tr.innerHTML = `
+                    <td style="color: var(--text-muted); font-weight: bold; text-align: center; cursor: grab;" title="Drag to reorder">
+                        <svg viewBox="0 0 24 24" style="width: 16px; height: 16px; vertical-align: middle; margin-right: 4px; opacity: 0.5;"><path d="M4 8h16M4 16h16" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                        ${index + 1}
+                    </td>
+                    <td><input type="text" value="${team.name}" oninput="updateTeamName(${index}, this.value)" onchange="triggerSave()" placeholder="Enter Team Name"></td>
+                    <td><input type="text" value="${team.p1}" oninput="updatePlayer(${index}, 'p1', this.value)" onchange="triggerSave()" placeholder="Enter Player 1"></td>
+                    <td><input type="text" value="${team.p2}" oninput="updatePlayer(${index}, 'p2', this.value)" onchange="triggerSave()" placeholder="Enter Player 2"></td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        // Drag and Drop Logic
+        let draggedRowIndex = null;
+
+        function handleDragStart(e, index) {
+            draggedRowIndex = index;
+            e.target.classList.add('dragging');
+            e.dataTransfer.effectAllowed = 'move';
+            e.dataTransfer.setData('text/plain', index);
+        }
+
+        function handleDragOver(e) {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'move';
+            return false;
+        }
+
+        function handleDragEnter(e) {
+            e.preventDefault();
+            const tr = e.target.closest('tr');
+            if (tr && !tr.classList.contains('dragging')) {
+                tr.classList.add('drag-over');
+            }
+        }
+
+        function handleDragLeave(e) {
+            const tr = e.target.closest('tr');
+            if (tr) {
+                tr.classList.remove('drag-over');
+            }
+        }
+
+        function handleDrop(e, targetIndex) {
+            e.stopPropagation();
+            const tr = e.target.closest('tr');
+            if (tr) tr.classList.remove('drag-over');
+            
+            const draggedTr = document.querySelector('.dragging');
+            if (draggedTr) draggedTr.classList.remove('dragging');
+
+            if (draggedRowIndex !== null && draggedRowIndex !== targetIndex) {
+                const draggedTeam = teams[draggedRowIndex];
+                teams.splice(draggedRowIndex, 1);
+                teams.splice(targetIndex, 0, draggedTeam);
+                
+                renderRoster();
+                renderBracket();
+                saveState();
+            }
+            draggedRowIndex = null;
+            return false;
+        }
+
+        // Bracket Data Structure
+        let bracketNodes = [];
+
+        function renderBracket() {
+            const container = document.getElementById("bracket-container");
+            container.innerHTML = '';
+            
+            if (teamsCount === 6) {
+                renderSixTeamBracket(container);
+                return;
+            }
+            
+            // Standard Power of 2 (or standard Byes) approach
+            let bracketSize = 2;
+            while (bracketSize < teamsCount) bracketSize *= 2;
+            
+            let rounds = Math.log2(bracketSize);
+            let playInCount = teamsCount - (bracketSize / 2);
+            let byesCount = bracketSize - teamsCount;
+            
+            bracketNodes = [];
+            let totalMatches = bracketSize - 1;
+            for(let i=1; i<=totalMatches; i++){
+                bracketNodes.push({
+                    id: `m${i}`,
+                    t1_val: "", t2_val: "",
+                    t1_ph: "", t2_ph: "",
+                    t1_score: 0, t2_score: 0,
+                    t1_source_idx: -1, t2_source_idx: -1, 
+                    isBye: false, winner: "", 
+                    nextMatchId: null, nextMatchSlot: null,
+                    roundIndex: -1
+                });
+            }
+
+            let idCounter = 1;
+            const roundsData = [];
+            let currentMatches = bracketSize / 2;
+
+            for (let r = 0; r < rounds; r++) {
+                let roundMatches = [];
+                for (let m = 0; m < currentMatches; m++) {
+                    const node = bracketNodes[idCounter - 1];
+                    node.roundIndex = r;
+                    roundMatches.push(node);
+                    idCounter++;
+                }
+                roundsData.push(roundMatches);
+                currentMatches /= 2;
+            }
+
+            for (let r = 0; r < rounds - 1; r++) {
+                const curRound = roundsData[r];
+                const nextRound = roundsData[r + 1];
+                for (let m = 0; m < curRound.length; m++) {
+                    const nextMatchIndex = Math.floor(m / 2);
+                    const isTopSlot = m % 2 === 0;
+                    curRound[m].nextMatchId = nextRound[nextMatchIndex].id;
+                    curRound[m].nextMatchSlot = isTopSlot ? 't1' : 't2';
+                }
+            }
+            
+            const firstRound = roundsData[0];
+            let teamIdx = 0;
+
+            for (let i = 0; i < firstRound.length; i++) {
+                let node = firstRound[i];
+                if (i < playInCount) {
+                    node.t1_val = teams[teamIdx].name; node.t1_source_idx = teamIdx++;
+                    node.t2_val = teams[teamIdx].name; node.t2_source_idx = teamIdx++;
+                } else {
+                    node.t1_val = teams[teamIdx].name; node.t1_source_idx = teamIdx++;
+                    node.isBye = true;
+                    node.winner = node.t1_val;
+                    if(node.nextMatchId) {
+                        let nextNode = bracketNodes.find(n => n.id === node.nextMatchId);
+                        if(node.nextMatchSlot === 't1') {
+                            nextNode.t1_val = node.winner; nextNode.t1_source_idx = node.t1_source_idx;
+                        } else {
+                            nextNode.t2_val = node.winner; nextNode.t2_source_idx = node.t1_source_idx;
+                        }
+                    }
+                }
+            }
+
+            roundsData.forEach((round, rIndex) => {
+                const isFinals = rIndex === rounds - 1;
+                const isSemi = rIndex === rounds - 2;
+                const isQuarter = rIndex === rounds - 3;
+                
+                let roundName = `Round ${rIndex + 1}`;
+                if (isFinals) roundName = "Finals";
+                else if (isSemi && bracketSize >= 4) roundName = "Semi Finals";
+                else if (isQuarter && bracketSize >= 8) roundName = "Quarter Finals";
+                if(rIndex === 0 && byesCount > 0) roundName = "Play-In Round";
+
+                const roundDiv = document.createElement('div');
+                roundDiv.className = 'round';
+                roundDiv.innerHTML = `<h3>${roundName}</h3>`;
+
+                round.forEach(node => {
+                    roundDiv.appendChild(createMatchupUI(node, rIndex, isFinals, isSemi));
+                });
+                container.appendChild(roundDiv);
+            });
+
+            const champDiv = document.createElement('div');
+            champDiv.className = 'round';
+            champDiv.innerHTML = `<h3>Champion</h3><div class="winner-box"><input type="text" id="champion" value="${champVal}" readonly></div>`;
+            container.appendChild(champDiv);
+            
+            triggerSave();
+        }
+
+        // Custom 6-Team logic
+        // M1, M2, M3 = Play-ins. 
+        // 3 losers jump to M4. Randomly 2 are selected. 
+        // M4 winner advances to Semi-Finals along with M1, M2, M3 winners.
+        let sixTeamLosers = [];
+        
+        function renderSixTeamBracket(container) {
+            bracketNodes = [];
+            sixTeamLosers = [];
+            
+            // Define nodes manually
+            const m1 = createNode('m1', 0, 1);
+            const m2 = createNode('m2', 2, 3);
+            const m3 = createNode('m3', 4, 5);
+            
+            const m4 = createNode('m4', -1, -1); // Play-in 4 (Losers)
+            m4.t1_ph = "Random Loser 1"; m4.t2_ph = "Random Loser 2";
+            
+            const m5 = createNode('m5', -1, -1); // Semi 1
+            const m6 = createNode('m6', -1, -1); // Semi 2
+            const m7 = createNode('m7', -1, -1); // Finals
+            
+            m1.nextMatchId = 'm5'; m1.nextMatchSlot = 't1';
+            m2.nextMatchId = 'm5'; m2.nextMatchSlot = 't2';
+            m3.nextMatchId = 'm6'; m3.nextMatchSlot = 't1';
+            m4.nextMatchId = 'm6'; m4.nextMatchSlot = 't2';
+            
+            m5.nextMatchId = 'm7'; m5.nextMatchSlot = 't1';
+            m6.nextMatchId = 'm7'; m6.nextMatchSlot = 't2';
+            
+            const r1 = document.createElement('div'); r1.className = 'round'; r1.innerHTML = `<h3>Play-In Round</h3>`;
+            r1.appendChild(createMatchupUI(m1, 0, false, false, "advanceSixTeam(this, 'm1', 'm5-t1')"));
+            r1.appendChild(createMatchupUI(m2, 0, false, false, "advanceSixTeam(this, 'm2', 'm5-t2')"));
+            r1.appendChild(createMatchupUI(m3, 0, false, false, "advanceSixTeam(this, 'm3', 'm6-t1')"));
+            
+            const r2 = document.createElement('div'); r2.className = 'round'; r2.innerHTML = `<h3>Losers Play-In</h3>`;
+            r2.appendChild(createMatchupUI(m4, 1, false, false));
+            
+            const r3 = document.createElement('div'); r3.className = 'round'; r3.innerHTML = `<h3>Semi Finals</h3>`;
+            m5.t1_ph = "Winner M1"; m5.t2_ph = "Winner M2";
+            m6.t1_ph = "Winner M3"; m6.t2_ph = "Winner Losers Play-in";
+            r3.appendChild(createMatchupUI(m5, 2, false, true));
+            r3.appendChild(createMatchupUI(m6, 2, false, true));
+            
+            const r4 = document.createElement('div'); r4.className = 'round'; r4.innerHTML = `<h3>Finals</h3>`;
+            m7.t1_ph = "Finalist 1"; m7.t2_ph = "Finalist 2";
+            r4.appendChild(createMatchupUI(m7, 3, true, false));
+            
+            container.appendChild(r1);
+            container.appendChild(r2);
+            container.appendChild(r3);
+            container.appendChild(r4);
+            
+            const champDiv = document.createElement('div');
+            champDiv.className = 'round';
+            champDiv.innerHTML = `<h3>Champion</h3><div class="winner-box"><input type="text" id="champion" value="TBD" readonly></div>`;
+            container.appendChild(champDiv);
+            
+            triggerSave();
+        }
+
+        function createNode(id, idx1, idx2) {
+            const node = { id: id, t1: null, t2: null, t1_val: idx1 >=0 ? teams[idx1].name : "", t2_val: idx2 >=0 ? teams[idx2].name : "", t1_ph: "", t2_ph: "", t1_score: 0, t2_score: 0, t1_source_idx: idx1, t2_source_idx: idx2, isBye: false, nextMatchId: null, nextMatchSlot: null };
+            bracketNodes.push(node);
+            return node;
+        }
+
+        function createMatchupUI(node, rIndex, isFinals, isSemi, overrideAdvanceStr = null) {
+            const matchupDiv = document.createElement('div');
+            matchupDiv.className = 'matchup';
+            matchupDiv.id = node.id;
+
+            const t1Id = `${node.id}-t1`;
+            const t2Id = `${node.id}-t2`;
+            
+            let targetId = node.nextMatchId ? `${node.nextMatchId}-${node.nextMatchSlot}` : 'champion';
+            
+            let p1Holder = node.t1_ph || (rIndex === 0 ? "" : `Winner previous`);
+            let p2Holder = node.t2_ph || (rIndex === 0 ? "" : `Winner previous`);
+
+            if (node.isBye) {
+                matchupDiv.innerHTML = `
+                    <div class="team-row" style="background: rgba(16, 185, 129, 0.1); border-color: var(--accent);">
+                        <input class="team-name-input" type="text" value="${node.t1_val}" id="${t1Id}" readonly style="color: var(--accent);">
+                        <span style="font-size: 0.8rem; color: var(--accent); margin-right: 8px; font-weight: bold;">BYE</span>
+                    </div>
+                    <div class="team-row" style="opacity: 0.3;">
+                        <input class="team-name-input" type="text" value="" readonly>
+                    </div>
+                `;
+            } else {
+                let adv1 = overrideAdvanceStr ? overrideAdvanceStr.replace('this', `'${t1Id}'`) : `advance('${t1Id}', '${targetId}')`;
+                let adv2 = overrideAdvanceStr ? overrideAdvanceStr.replace('this', `'${t2Id}'`) : `advance('${t2Id}', '${targetId}')`;
+
+                matchupDiv.innerHTML = `
+                    <div class="team-row">
+                        <input class="team-name-input" type="text" value="${node.t1_val}" placeholder="${p1Holder}" id="${t1Id}" ${node.t1_source_idx >= 0 ? `oninput="syncToRoster(${node.t1_source_idx}, this.value)"` : ''} onchange="triggerSave()">
+                        <input class="score-input" type="number" value="${node.t1_score || 0}" onchange="triggerSave()">
+                        <button class="advance" onclick="${adv1}" title="Advance"><svg viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg></button>
+                    </div>
+                    <div class="team-row">
+                        <input class="team-name-input" type="text" value="${node.t2_val}" placeholder="${p2Holder}" id="${t2Id}" ${node.t2_source_idx >= 0 ? `oninput="syncToRoster(${node.t2_source_idx}, this.value)"` : ''} onchange="triggerSave()">
+                        <input class="score-input" type="number" value="${node.t2_score || 0}" onchange="triggerSave()">
+                        <button class="advance" onclick="${adv2}" title="Advance"><svg viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg></button>
+                    </div>
+                `;
+            }
+            return matchupDiv;
+        }
+
+        function advanceSixTeam(winnerId, matchId, targetId) {
+            // Figure out the loser
+            const t1Id = `${matchId}-t1`;
+            const t2Id = `${matchId}-t2`;
+            const loserId = winnerId === t1Id ? t2Id : t1Id;
+            
+            const loserName = document.getElementById(loserId).value;
+            
+            // Check if match was already resolved previously, remove old loser
+            const oldT1 = document.getElementById(t1Id).value;
+            const oldT2 = document.getElementById(t2Id).value;
+            sixTeamLosers = sixTeamLosers.filter(l => l !== oldT1 && l !== oldT2);
+            
+            if(loserName && loserName.trim() !== "") {
+                sixTeamLosers.push(loserName);
+            }
+            
+            // Standard advance logic for winner
+            advance(winnerId, targetId);
+            
+            // If we have all 3 losers, time to pick 2!
+            if (sixTeamLosers.length === 3) {
+                // Shuffle losers
+                let tempLosers = [...sixTeamLosers];
+                for (let i = tempLosers.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [tempLosers[i], tempLosers[j]] = [tempLosers[j], tempLosers[i]];
+                }
+                
+                // Pick first 2
+                const m4T1 = document.getElementById('m4-t1');
+                const m4T2 = document.getElementById('m4-t2');
+                
+                if(m4T1 && m4T2) {
+                    m4T1.value = tempLosers[0];
+                    m4T2.value = tempLosers[1];
+                    
+                    m4T1.style.color = 'var(--accent)';
+                    m4T2.style.color = 'var(--accent)';
+                    setTimeout(() => { m4T1.style.color = ''; m4T2.style.color = ''; }, 1000);
+                    triggerSave();
+                }
+            }
+        }
+
+        function updateTeamName(index, newName) {
+            teams[index].name = newName;
+            
+            // Re-render bracket to handle byes correctly since structure is complex
+            // We save the state in the logical nodes first to determine where this team is
+            bracketNodes.forEach(node => {
+                if (node.t1_source_idx === index) {
+                    const input = document.getElementById(`${node.id}-t1`);
+                    if(input) input.value = newName;
+                    
+                    // If it's a bye, we also need to update its auto-advanced slot
+                    if (node.isBye && node.nextMatchId) {
+                        const nextInput = document.getElementById(`${node.nextMatchId}-${node.nextMatchSlot}`);
+                        if(nextInput) nextInput.value = newName;
+                    }
+                }
+                if (node.t2_source_idx === index) {
+                    const input = document.getElementById(`${node.id}-t2`);
+                    if(input) input.value = newName;
+                }
+            });
+        }
+
+        function updatePlayer(index, playerKey, newName) {
+            teams[index][playerKey] = newName;
+        }
+
+        function syncToRoster(index, newName) {
+            teams[index].name = newName;
+            const tbody = document.getElementById("roster-body");
+            if (tbody.children[index]) {
+                const row = tbody.children[index];
+                const nameInput = row.cells[1].querySelector('input');
+                if (nameInput) {
+                    nameInput.value = newName;
+                }
+            }
+        }
+
+        function advance(sourceId, targetId) {
+            const teamName = document.getElementById(sourceId).value;
+            if(teamName && teamName.trim() !== "") {
+                const targetEl = document.getElementById(targetId);
+                targetEl.value = teamName;
+                
+                targetEl.style.transition = 'all 0.3s ease';
+                targetEl.style.color = 'var(--accent)';
+                targetEl.style.transform = 'scale(1.05)';
+                
+                const matchup = targetEl.closest('.matchup, .winner-box');
+                if (matchup) {
+                    const originalBorder = matchup.style.borderColor;
+                    matchup.style.borderColor = 'var(--accent)';
+                    matchup.style.boxShadow = '0 0 20px rgba(16, 185, 129, 0.3)';
+                    
+                    setTimeout(() => {
+                        matchup.style.borderColor = originalBorder;
+                        matchup.style.boxShadow = '';
+                    }, 500);
+                }
+
+                setTimeout(() => {
+                    targetEl.style.color = '';
+                    targetEl.style.transform = '';
+                }, 300);
+            }
+            triggerSave();
+        }
+        
+        // This function forces a re-render exactly resembling the loaded state
+        function rebuildBracketFromState(champVal) {
+            const container = document.getElementById("bracket-container");
+            container.innerHTML = '';
+
+            let roundMap = new Map();
+            bracketNodes.forEach(node => {
+                if(!roundMap.has(node.roundIndex)) roundMap.set(node.roundIndex, []);
+                roundMap.get(node.roundIndex).push(node);
+            });
+
+            // If it's the custom 6 team logic, manually recreate the structure based on nodes
+            if (teamsCount === 6 && bracketNodes.length === 7) {
+                const r1 = document.createElement('div'); r1.className = 'round'; r1.innerHTML = `<h3>Play-In Round</h3>`;
+                r1.appendChild(createMatchupUI(bracketNodes[0], 0, false, false, "advanceSixTeam(this, 'm1', 'm5-t1')"));
+                r1.appendChild(createMatchupUI(bracketNodes[1], 0, false, false, "advanceSixTeam(this, 'm2', 'm5-t2')"));
+                r1.appendChild(createMatchupUI(bracketNodes[2], 0, false, false, "advanceSixTeam(this, 'm3', 'm6-t1')"));
+                
+                const r2 = document.createElement('div'); r2.className = 'round'; r2.innerHTML = `<h3>Losers Play-In</h3>`;
+                r2.appendChild(createMatchupUI(bracketNodes[3], 1, false, false));
+                
+                const r3 = document.createElement('div'); r3.className = 'round'; r3.innerHTML = `<h3>Semi Finals</h3>`;
+                r3.appendChild(createMatchupUI(bracketNodes[4], 2, false, true));
+                r3.appendChild(createMatchupUI(bracketNodes[5], 2, false, true));
+                
+                const r4 = document.createElement('div'); r4.className = 'round'; r4.innerHTML = `<h3>Finals</h3>`;
+                r4.appendChild(createMatchupUI(bracketNodes[6], 3, true, false));
+                
+                container.appendChild(r1); container.appendChild(r2); container.appendChild(r3); container.appendChild(r4);
+            } else {
+                // Determine rounds array
+                let roundsArr = Array.from(roundMap.keys()).sort((a,b)=>a-b);
+                let rounds = roundsArr.length;
+                let bracketSize = 2;
+                while (bracketSize < teamsCount) bracketSize *= 2;
+                let byesCount = bracketSize - teamsCount;
+
+                roundsArr.forEach(rIndex => {
+                    const roundNodes = roundMap.get(rIndex);
+                    const isFinals = rIndex === rounds - 1;
+                    const isSemi = rIndex === rounds - 2;
+                    const isQuarter = rIndex === rounds - 3;
+                    
+                    let roundName = `Round ${rIndex + 1}`;
+                    if (isFinals) roundName = "Finals";
+                    else if (isSemi && bracketSize >= 4) roundName = "Semi Finals";
+                    else if (isQuarter && bracketSize >= 8) roundName = "Quarter Finals";
+                    if(rIndex === 0 && byesCount > 0) roundName = "Play-In Round";
+
+                    const roundDiv = document.createElement('div');
+                    roundDiv.className = 'round';
+                    roundDiv.innerHTML = `<h3>${roundName}</h3>`;
+
+                    roundNodes.forEach(node => {
+                        roundDiv.appendChild(createMatchupUI(node, rIndex, isFinals, isSemi));
+                    });
+                    container.appendChild(roundDiv);
+                });
+            }
+
+            // Restore champion UI
+            const champDiv = document.createElement('div');
+            champDiv.className = 'round';
+            champDiv.innerHTML = `<h3>Champion</h3><div class="winner-box"><input type="text" id="champion" value="${champVal}" readonly></div>`;
+            container.appendChild(champDiv);
+        }
+
+        // Run on load
+        if(!loadState()) {
+            initTeams(8);
+        }
+    </script>
+</body>
+</html>

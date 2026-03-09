@@ -36,7 +36,16 @@ export default function BettingPage() {
             Open Matchups
           </h2>
           {openMatchups.map((matchup) => (
-            <BettingSlip key={matchup.id} matchup={matchup} />
+            <BettingSlip 
+              key={matchup.id} 
+              tournamentId={matchup.id}
+              tournamentName={matchup.tournamentName}
+              matchupId={matchup.id}
+              teamA={{ id: 'teamA', name: matchup.teamA }}
+              teamB={{ id: 'teamB', name: matchup.teamB }}
+              oddsA={matchup.oddsA}
+              oddsB={matchup.oddsB}
+            />
           ))}
         </div>
         <div>

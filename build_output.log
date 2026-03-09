@@ -1,0 +1,25 @@
+
+> showdown-central@0.1.0 build
+> next build
+
+▲ Next.js 16.1.6 (Turbopack)
+- Environments: .env.local
+
+⚠ The "middleware" file convention is deprecated. Please use "proxy" instead. Learn more: https://nextjs.org/docs/messages/middleware-to-proxy
+  Creating an optimized production build ...
+✓ Compiled successfully in 1640.1ms
+  Running TypeScript ...
+Failed to compile.
+
+./src/app/betting/page.tsx:39:43
+Type error: Type '{ key: string; matchup: { id: string; tournamentName: string; teamA: string; teamB: string; oddsA: number; oddsB: number; }; }' is not assignable to type 'IntrinsicAttributes & BettingSlipProps'.
+  Property 'matchup' does not exist on type 'IntrinsicAttributes & BettingSlipProps'. Did you mean 'matchupId'?
+
+[0m [90m 37 |[39m           [33m<[39m[33m/[39m[33mh2[39m[33m>[39m
+ [90m 38 |[39m           {openMatchups[33m.[39mmap((matchup) [33m=>[39m (
+[31m[1m>[22m[39m[90m 39 |[39m             [33m<[39m[33mBettingSlip[39m key[33m=[39m{matchup[33m.[39mid} matchup[33m=[39m{matchup} [33m/[39m[33m>[39m
+ [90m    |[39m                                           [31m[1m^[22m[39m
+ [90m 40 |[39m           ))}
+ [90m 41 |[39m         [33m<[39m[33m/[39m[33mdiv[39m[33m>[39m
+ [90m 42 |[39m         [33m<[39m[33mdiv[39m[33m>[39m[0m
+Next.js build worker exited with code: 1 and signal: null
