@@ -1,19 +1,30 @@
 "use client";
 
 import { useState } from 'react'
-import { Coins, TrendingUp, TrendingDown, Plus, Loader2 } from "lucide-react";
+import { Coins, Plus, Loader2 } from "lucide-react";
 import { useSapsStore } from "@/store/useSapsStore";
 
 export default function SapsWallet() {
-  const { balance, addSaps } = useSapsStore()
-  const [isToppingUp, setIsToppingUp] = useState(false)
+  const { balance, setBalance } = useSapsStore()
+  const [isRefilling, setIsRefilling] = useState(false)
+  const [refillError, setRefillError] = useState<string | null>(null)
 
-  const handleTopUp = async () => {
-     setIsToppingUp(true)
-     // Simulate a top-up network request
-     await new Promise(resolve => setTimeout(resolve, 800))
-     addSaps(500) // Give 500 SAPS
-     setIsToppingUp(false)
+  const handleRefill = async () => {
+     setIsRefilling(true)
+     setRefillError(null)
+     try {
+        const res = await fetch('/api/wallet/refill', { method: 'POST' })
+        const json = await res.json()
+        if (!res.ok) {
+           setRefillError(json.error || 'Refill failed.')
+        } else {
+           setBalance(json.newBalance)
+        }
+     } catch {
+        setRefillError('An unexpected error occurred.')
+     } finally {
+        setIsRefilling(false)
+     }
   }
 
   return (
@@ -27,14 +38,16 @@ export default function SapsWallet() {
             SAPS Wallet
           </h2>
         </div>
-        <button 
-           onClick={handleTopUp}
-           disabled={isToppingUp}
-           className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white text-xs font-bold rounded-lg transition-colors"
-        >
-           {isToppingUp ? <Loader2 className="w-3 h-3 animate-spin" /> : <Plus className="w-3 h-3" />}
-           Top Up
-        </button>
+        {balance === 0 && (
+          <button 
+             onClick={handleRefill}
+             disabled={isRefilling}
+             className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white text-xs font-bold rounded-lg transition-colors"
+          >
+             {isRefilling ? <Loader2 className="w-3 h-3 animate-spin" /> : <Plus className="w-3 h-3" />}
+             Claim Refill
+          </button>
+        )}
       </div>
 
       <div className="rounded-xl bg-gradient-to-br from-slate-900 to-slate-800 border border-slate-700 p-5 flex flex-col items-center justify-center relative overflow-hidden group">
@@ -45,6 +58,10 @@ export default function SapsWallet() {
           <span className="text-sm font-bold text-blue-400">SAPS</span>
         </div>
       </div>
+
+      {refillError && (
+        <p className="mt-3 text-xs text-red-400 text-center">{refillError}</p>
+      )}
     </div>
   );
 }
