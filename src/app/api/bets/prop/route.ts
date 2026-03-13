@@ -18,69 +18,38 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Invalid bet parameters' }, { status: 400 })
     }
     if (bettorId !== user.id) {
-       return NextResponse.json({ error: 'Unauthorized user attempt' }, { status: 403 })
+      return NextResponse.json({ error: 'Unauthorized user attempt' }, { status: 403 })
     }
 
-    // 3. Fetch User Balance
-    const { data: profile, error: profileError } = await supabase
-      .from('profiles')
-      .select('saps_balance')
-      .eq('id', user.id)
-      .single()
-
-    if (profileError || !profile) {
-      return NextResponse.json({ error: 'Profile not found' }, { status: 404 })
-    }
-
-    if (profile.saps_balance < amount) {
-      return NextResponse.json({ error: 'Insufficient SAPS balance' }, { status: 400 })
-    }
-
-    // 4. Determine Payout
-    const potentialPayout = Math.floor(amount * odds)
-
-    // 5. Deduct Balance (Optimistic server-side, real systems use RPC for atomic ops)
-    const newBalance = profile.saps_balance - amount
-    const { error: updateError } = await supabase
-      .from('profiles')
-      .update({ saps_balance: newBalance })
-      .eq('id', user.id)
-
-    if (updateError) {
-      return NextResponse.json({ error: 'Failed to deduct balance' }, { status: 500 })
-    }
-
-    // 6. Record the Bet
-    const { data: bet, error: betError } = await supabase
-      .from('user_prop_bets')
-      .insert({
-        bettor_id: bettorId,
-        prop_bet_id: propBetId,
-        option_id: optionId,
-        amount: amount,
-        odds_at_bet: odds,
-        payout: potentialPayout,
-        status: 'pending'
-      })
-      .select()
-      .single()
-
-    if (betError) {
-       // Rollback balance (Again, need RPC for full safety)
-       await supabase.from('profiles').update({ saps_balance: profile.saps_balance }).eq('id', user.id)
-       return NextResponse.json({ error: 'Failed to record bet' }, { status: 500 })
-    }
-
-    // 7. Record Transaction Ledger
-    await supabase.from('transactions').insert({
-       user_id: user.id,
-       type: 'bet_place',
-       amount: -amount,
-       reference_id: bet.id,
-       description: `Placed prop bet`
+    // Atomically deduct balance, insert prop bet, and record transaction via RPC.
+    // The database function uses SELECT ... FOR UPDATE to prevent race conditions
+    // and rolls back all changes if any step fails.
+    const { data, error } = await supabase.rpc('place_prop_bet', {
+      p_prop_bet_id: propBetId,
+      p_option_id: optionId,
+      p_amount: amount,
+      p_odds: odds,
     })
 
-    return NextResponse.json({ success: true, newBalance, bet })
+    if (error) {
+      if (error.message.includes('Insufficient SAPS balance')) {
+        return NextResponse.json({ error: 'Insufficient SAPS balance' }, { status: 400 })
+      }
+      console.error('place_prop_bet RPC error:', error)
+      return NextResponse.json({ error: 'Failed to place bet' }, { status: 500 })
+    }
+
+    return NextResponse.json({
+      success: true,
+      newBalance: data.new_balance,
+      bet: {
+        id: data.bet_id,
+        amount: data.amount,
+        odds_at_bet: data.odds_at_bet,
+        payout: data.payout,
+        status: data.status,
+      },
+    })
 
   } catch (error: any) {
     console.error('Error placing prop bet:', error)
