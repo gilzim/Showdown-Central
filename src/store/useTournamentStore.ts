@@ -16,6 +16,8 @@ export type MatchupNode = {
   team1Score: string
   team2Score: string
   winnerId: string | null
+  odds_a?: number
+  odds_b?: number
 }
 
 interface TournamentState {

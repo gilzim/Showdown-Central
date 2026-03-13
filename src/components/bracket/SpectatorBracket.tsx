@@ -9,6 +9,7 @@ import { PropBetsPanel } from '../betting/PropBetsPanel'
 
 interface SpectatorBracketProps {
   tournamentId: string
+  tournamentName: string
   isHost?: boolean
   initialData: {
     teamsCount: number
@@ -17,7 +18,7 @@ interface SpectatorBracketProps {
   }
 }
 
-export default function SpectatorBracket({ tournamentId, isHost = false, initialData }: SpectatorBracketProps) {
+export default function SpectatorBracket({ tournamentId, tournamentName, isHost = false, initialData }: SpectatorBracketProps) {
   const { 
     teams,
     setInitialData, 
@@ -98,7 +99,7 @@ export default function SpectatorBracket({ tournamentId, isHost = false, initial
          {selectedMatchup ? (
             <BettingSlip 
                tournamentId={tournamentId}
-               tournamentName="The Ultimate Showdown"
+               tournamentName={tournamentName}
                matchupId={selectedMatchup.id}
                teamA={{ id: selectedMatchup.team1Id!, name: getTeam(selectedMatchup.team1Id)?.name || 'TBD' }}
                teamB={{ id: selectedMatchup.team2Id!, name: getTeam(selectedMatchup.team2Id)?.name || 'TBD' }}

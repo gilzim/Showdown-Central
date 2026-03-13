@@ -2,8 +2,9 @@
 -- Showdown Central — Supabase Schema
 -- ============================================================
 
--- Enable UUID extension
+-- Enable extensions
 create extension if not exists "uuid-ossp";
+create extension if not exists "pgcrypto";
 
 -- ============================================================
 -- profiles

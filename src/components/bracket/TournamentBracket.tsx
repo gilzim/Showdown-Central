@@ -36,11 +36,12 @@ export default function TournamentBracket({ isHost = true, onMatchupSelect }: To
   const [isBetModalOpen, setIsBetModalOpen] = useState(false)
 
   useEffect(() => {
-    // Initial load only if we don't have teams and we are the host initializing
-    if (isHost && teams.length === 0) {
+    // Initial load only if we don't have teams and we are the host INITIALIZING A NEW tournament
+    // If there is no tournamentId in the URL, it's a new draft being created
+    if (isHost && !tournamentId && teams.length === 0) {
       setTeamsCount(8)
     }
-  }, [teams.length, setTeamsCount, isHost])
+  }, [teams.length, setTeamsCount, isHost, tournamentId])
 
   const handleZoom = (amount: number) => {
     if (amount === 0) setZoom(1)

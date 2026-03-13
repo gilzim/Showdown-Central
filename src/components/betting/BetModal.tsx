@@ -24,9 +24,9 @@ export default function BetModal({ isOpen, onClose, tournamentId, matchup, teamA
 
   if (!isOpen || !matchup) return null
 
-  // Mock odds for demonstration. Will come from DB.
-  const oddsA = 1.85
-  const oddsB = 2.05
+  // Use real odds from matchup if available, fallback to defaults
+  const oddsA = matchup.odds_a ?? 1.85
+  const oddsB = matchup.odds_b ?? 2.05
 
   const handlePlaceBet = async () => {
     setError(null)

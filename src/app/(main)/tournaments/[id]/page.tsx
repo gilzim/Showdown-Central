@@ -70,9 +70,11 @@ export default async function SpectatorPage({ params }: { params: Promise<{ id: 
           </Link>
           <div>
             <div className="flex items-center gap-3">
-               <span className="px-2 py-1 bg-red-500/20 text-red-400 text-xs font-bold uppercase rounded-md border border-red-500/30 flex items-center gap-2">
-                  <span className="w-2 h-2 bg-red-500 rounded-full animate-pulse" /> Live
-               </span>
+               {tournament.status === 'active' && (
+                 <span className="px-2 py-1 bg-red-500/20 text-red-400 text-xs font-bold uppercase rounded-md border border-red-500/30 flex items-center gap-2">
+                    <span className="w-2 h-2 bg-red-500 rounded-full animate-pulse" /> Live
+                 </span>
+               )}
                <h1 className="text-3xl font-extrabold text-white">{tournament.name}</h1>
             </div>
             <p className="text-slate-400 mt-1">Spectating Match. Select a matchup to put SAPS on the line.</p>
@@ -86,6 +88,7 @@ export default async function SpectatorPage({ params }: { params: Promise<{ id: 
       
       <SpectatorBracket 
         tournamentId={tournamentId}
+        tournamentName={tournament.name}
         isHost={isHost}
         initialData={initialData} 
       />

@@ -1,40 +1,36 @@
 import Link from "next/link";
 import TournamentCard from "@/components/tournament/TournamentCard";
+import { createClient } from "@/lib/supabase/server";
 
-const sampleTournaments = [
-  {
-    id: "t1",
-    name: "Spring Showdown",
-    game: "Chess",
-    mode: "Manual" as const,
-    status: "upcoming" as const,
-    teamsCount: 8,
-    maxTeams: 16,
-    prizePool: 1000,
-  },
-  {
-    id: "t2",
-    name: "Summer Slam",
-    game: "Street Fighter 6",
-    mode: "Self-Reg" as const,
-    status: "active" as const,
-    teamsCount: 12,
-    maxTeams: 16,
-    prizePool: 2500,
-  },
-  {
-    id: "t3",
-    name: "Autumn Cup",
-    game: "Rocket League",
-    mode: "Self-Reg" as const,
-    status: "upcoming" as const,
-    teamsCount: 4,
-    maxTeams: 8,
-    prizePool: 500,
-  },
-];
+export default async function TournamentsPage() {
+  const supabase = await createClient();
 
-export default function TournamentsPage() {
+  // Fetch tournaments and count the teams joined for each
+  const { data: tournamentsData } = await supabase
+    .from("tournaments")
+    .select(`
+      id,
+      name,
+      game,
+      mode,
+      status,
+      max_teams,
+      prize_pool,
+      teams(count)
+    `)
+    .order("created_at", { ascending: false });
+
+  const tournaments = (tournamentsData || []).map((t) => ({
+    id: t.id,
+    name: t.name,
+    game: t.game,
+    mode: t.mode as "Manual" | "Self-Reg",
+    status: t.status as "upcoming" | "active" | "completed",
+    teamsCount: t.teams?.[0]?.count ?? 0,
+    maxTeams: t.max_teams,
+    prizePool: t.prize_pool,
+  }));
+
   return (
     <div className="w-full">
       <div className="flex items-center justify-between mb-8">
@@ -50,9 +46,13 @@ export default function TournamentsPage() {
       </div>
 
       <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-        {sampleTournaments.map((t) => (
-          <TournamentCard key={t.id} {...t} />
-        ))}
+        {tournaments.length === 0 ? (
+          <p className="text-zinc-500 col-span-full">No tournaments found.</p>
+        ) : (
+          tournaments.map((t) => (
+            <TournamentCard key={t.id} {...t} />
+          ))
+        )}
       </div>
     </div>
   );
