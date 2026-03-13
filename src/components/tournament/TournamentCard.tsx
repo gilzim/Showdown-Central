@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { Trophy, Users, Coins, Settings2 } from "lucide-react";
 
 export interface TournamentCardProps {
@@ -5,7 +6,7 @@ export interface TournamentCardProps {
   name: string;
   game: string;
   mode: "Manual" | "Self-Reg";
-  status: "upcoming" | "active" | "completed";
+  status: "upcoming" | "active" | "completed" | "draft" | "cancelled";
   teamsCount: number;
   maxTeams: number;
   prizePool: number;
@@ -17,9 +18,12 @@ const statusStyles: Record<TournamentCardProps["status"], string> = {
   active:
     "bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300",
   completed: "bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400",
+  draft: "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300",
+  cancelled: "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300",
 };
 
 export default function TournamentCard({
+  id,
   name,
   game,
   mode,
@@ -61,10 +65,13 @@ export default function TournamentCard({
         </div>
       </div>
 
-      <button className="mt-auto w-full rounded-lg border border-indigo-600 px-4 py-2 text-sm font-medium text-indigo-600 hover:bg-indigo-600 hover:text-white transition-colors dark:border-indigo-400 dark:text-indigo-400 dark:hover:bg-indigo-600 dark:hover:text-white">
+      <Link
+        href={`/tournaments/${id}`}
+        className="mt-auto w-full rounded-lg border border-indigo-600 px-4 py-2 text-sm font-medium text-indigo-600 hover:bg-indigo-600 hover:text-white transition-colors dark:border-indigo-400 dark:text-indigo-400 dark:hover:bg-indigo-600 dark:hover:text-white text-center"
+      >
         <Trophy className="inline h-4 w-4 mr-1.5 -mt-0.5" />
         View Bracket
-      </button>
+      </Link>
     </div>
   );
 }

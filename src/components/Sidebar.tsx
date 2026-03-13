@@ -11,12 +11,18 @@ const navItems = [
   { href: "/profile", label: "Profile", icon: User },
 ];
 
+const AUTH_PATHS = ["/login", "/auth"];
+
 export default function Sidebar() {
   const pathname = usePathname();
 
+  if (AUTH_PATHS.some((p) => pathname.startsWith(p))) {
+    return null;
+  }
+
   return (
-    <aside className="flex h-screen w-60 flex-col bg-zinc-900 text-white">
-      <div className="px-6 py-5 text-xl font-bold tracking-tight border-b border-zinc-700">
+    <aside className="flex h-screen w-60 flex-col bg-slate-900 border-r border-slate-800 text-white sticky top-0 shrink-0">
+      <div className="px-6 py-5 text-xl font-bold tracking-tight border-b border-slate-800">
         Showdown Central
       </div>
       <nav className="flex flex-col gap-1 p-4 flex-1">
@@ -29,7 +35,7 @@ export default function Sidebar() {
               className={`flex items-center gap-3 rounded-lg px-4 py-2.5 text-sm font-medium transition-colors ${
                 active
                   ? "bg-indigo-600 text-white"
-                  : "text-zinc-400 hover:bg-zinc-800 hover:text-white"
+                  : "text-slate-400 hover:bg-slate-800 hover:text-white"
               }`}
             >
               <Icon className="h-4 w-4 shrink-0" />

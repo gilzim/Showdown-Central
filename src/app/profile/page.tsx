@@ -3,6 +3,20 @@ import { redirect } from 'next/navigation'
 import { ArrowLeft, User, Coins, Calendar, Trophy } from 'lucide-react'
 import Link from 'next/link'
 
+type TournamentEntry = {
+  id: string
+  name: string
+  game: string
+  status: string
+  created_at: string
+  role: 'Host' | 'Player'
+}
+
+type JoinedTeamRow = {
+  tournament_id: string
+  tournaments: Omit<TournamentEntry, 'role'> | null
+}
+
 export default async function ProfilePage() {
   const supabase = await createClient()
 
@@ -19,6 +33,30 @@ export default async function ProfilePage() {
     .select('*')
     .eq('id', user.id)
     .single()
+
+  // Fetch all tournaments associated with the user (hosted or joined)
+  const { data: hostedTournaments } = await supabase
+    .from('tournaments')
+    .select('id, name, game, status, created_at')
+    .eq('host_id', user.id)
+    .order('created_at', { ascending: false })
+
+  const { data: joinedTeams } = await supabase
+    .from('teams')
+    .select('tournament_id, tournaments(id, name, game, status, created_at)')
+    .eq('captain_id', user.id)
+
+  // Combine and de-duplicate
+  const hostedSet = new Set((hostedTournaments || []).map((t) => t.id))
+  const joinedTournaments = ((joinedTeams || []) as JoinedTeamRow[])
+    .map((jt) => jt.tournaments)
+    .filter((t): t is NonNullable<JoinedTeamRow['tournaments']> => t !== null)
+    .filter((t) => !hostedSet.has(t.id))
+
+  const allTournaments: TournamentEntry[] = [
+    ...(hostedTournaments || []).map((t) => ({ ...t, role: 'Host' as const })),
+    ...joinedTournaments.map((t) => ({ ...t, role: 'Player' as const })),
+  ].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
 
   return (
     <div className="w-full max-w-5xl mx-auto flex flex-col gap-8">
@@ -50,7 +88,7 @@ export default async function ProfilePage() {
                </div>
                <div className="w-full p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-xl flex items-center justify-center gap-3">
                   <Coins className="w-6 h-6 text-emerald-400" />
-                  <span className="text-3xl font-black text-emerald-400">{profile?.saps_balance || 500}</span>
+                  <span className="text-3xl font-black text-emerald-400">{profile?.saps_balance ?? 500}</span>
                </div>
             </div>
          </div>
@@ -63,17 +101,35 @@ export default async function ProfilePage() {
                </h3>
                
                <div className="flex flex-col gap-4">
-                  <div className="flex items-center justify-between p-4 bg-slate-900/50 border border-slate-700 rounded-xl lg:flex-row flex-col gap-4">
-                     <div>
-                        <h4 className="font-bold text-slate-200">The Ultimate Showdown 2026</h4>
-                        <p className="text-sm text-slate-400 flex items-center gap-1 mt-1"><Calendar className="w-3 h-3" /> Hosted by you • Ended Mar 10</p>
+                  {allTournaments.length === 0 ? (
+                     <div className="text-center p-8 border-2 border-dashed border-slate-700 rounded-xl">
+                        <p className="text-slate-500">No tournament history found.</p>
                      </div>
-                     <span className="px-3 py-1 bg-slate-700 text-slate-300 rounded-full text-xs font-bold uppercase w-fit">Host</span>
-                  </div>
-                  {/* Empty state hook for when DB query returns empty */}
-                  <div className="text-center p-8 border-2 border-dashed border-slate-700 rounded-xl">
-                     <p className="text-slate-500">No other tournament history found.</p>
-                  </div>
+                  ) : (
+                     allTournaments.map((t) => (
+                        <Link
+                           key={t.id}
+                           href={`/tournaments/${t.id}`}
+                           className="flex items-center justify-between p-4 bg-slate-900/50 border border-slate-700 rounded-xl lg:flex-row flex-col gap-4 hover:border-slate-500 transition-colors"
+                        >
+                           <div>
+                              <h4 className="font-bold text-slate-200">{t.name}</h4>
+                              <p className="text-sm text-slate-400 flex items-center gap-1 mt-1">
+                                 <Calendar className="w-3 h-3" />
+                                 {t.game} &bull; {new Date(t.created_at).toLocaleDateString()}
+                              </p>
+                           </div>
+                           <div className="flex items-center gap-2">
+                              <span className={`px-2 py-1 rounded-full text-xs font-bold uppercase ${t.status === 'active' ? 'bg-emerald-500/20 text-emerald-400' : t.status === 'completed' ? 'bg-slate-700 text-slate-300' : 'bg-blue-500/20 text-blue-400'}`}>
+                                 {t.status}
+                              </span>
+                              <span className="px-3 py-1 bg-slate-700 text-slate-300 rounded-full text-xs font-bold uppercase w-fit">
+                                 {t.role}
+                              </span>
+                           </div>
+                        </Link>
+                     ))
+                  )}
                </div>
             </div>
          </div>

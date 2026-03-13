@@ -15,6 +15,7 @@ create table if not exists profiles (
   avatar_url   text,
   saps_balance integer not null default 500,
   role         text not null default 'player' check (role in ('player', 'host', 'admin')),
+  last_bonus_at timestamptz,
   created_at   timestamptz not null default now(),
   updated_at   timestamptz not null default now()
 );
