@@ -9,6 +9,9 @@ export default async function SpectatorPage({ params }: { params: Promise<{ id: 
   const { id: tournamentId } = await params
   const supabase = await createClient()
 
+  // 0. Get the current user (if any)
+  const { data: { user } } = await supabase.auth.getUser()
+
   // 1. Fetch tournament
   const { data: tournament, error: tError } = await supabase
     .from('tournaments')
@@ -56,6 +59,8 @@ export default async function SpectatorPage({ params }: { params: Promise<{ id: 
     matchups: mappedMatchups
   }
 
+  const isHost = !!user && user.id === tournament.host_id
+
   return (
     <div className="w-full max-w-7xl mx-auto flex flex-col gap-8">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 mb-2">
@@ -80,7 +85,8 @@ export default async function SpectatorPage({ params }: { params: Promise<{ id: 
       </div>
       
       <SpectatorBracket 
-        tournamentId={tournamentId} 
+        tournamentId={tournamentId}
+        isHost={isHost}
         initialData={initialData} 
       />
     </div>

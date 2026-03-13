@@ -9,6 +9,7 @@ import { PropBetsPanel } from '../betting/PropBetsPanel'
 
 interface SpectatorBracketProps {
   tournamentId: string
+  isHost?: boolean
   initialData: {
     teamsCount: number
     teams: Team[]
@@ -16,7 +17,7 @@ interface SpectatorBracketProps {
   }
 }
 
-export default function SpectatorBracket({ tournamentId, initialData }: SpectatorBracketProps) {
+export default function SpectatorBracket({ tournamentId, isHost = false, initialData }: SpectatorBracketProps) {
   const { 
     teams,
     setInitialData, 
@@ -82,7 +83,7 @@ export default function SpectatorBracket({ tournamentId, initialData }: Spectato
          {/* Intercept the visualizer clicks here by rendering it manually since TournamentBracket handles host stuff too */}
          {/* Since TournamentBracket encapsulates a lot, let's just use it and rely on its internal selectedMatchup handler */}
          {/* Wait, TournamentBracket has a BetModal built in now. Let's remove BetModal from TournamentBracket and handle it here for spectator mode. */}
-         <TournamentBracket isHost={false} onMatchupSelect={setSelectedMatchup} />
+         <TournamentBracket isHost={isHost} onMatchupSelect={setSelectedMatchup} />
          
          <div className="w-full border-t border-slate-700/50 pt-8 mt-4">
              <div className="flex items-center gap-3 mb-6">

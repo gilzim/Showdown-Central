@@ -3,6 +3,10 @@
 import { useTournamentStore, MatchupNode } from '@/store/useTournamentStore'
 import { Trophy } from 'lucide-react'
 import { useMemo, useCallback } from 'react'
+import { createClient } from '@/lib/supabase/client'
+
+// UUID v4 pattern – used to detect DB-persisted matchup IDs
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
 // Sub-component that only subscribes to specific matchup data
 const MatchupBox = ({ mId, isHost, onMatchupClick }: { mId: string, isHost: boolean, onMatchupClick?: (m: MatchupNode) => void }) => {
@@ -12,6 +16,23 @@ const MatchupBox = ({ mId, isHost, onMatchupClick }: { mId: string, isHost: bool
    // we do not need to bind advanceWinner and updateScore inside useCallback in a way that causes re-renders 
    const advanceWinner = useTournamentStore(state => state.advanceWinner)
    const updateMatchupScore = useTournamentStore(state => state.updateMatchupScore)
+
+   const handleAdvanceWinner = useCallback(async (winnerId: string) => {
+      // Optimistic local update
+      advanceWinner(mId, winnerId)
+
+      // Persist to DB via RPC when the matchup ID is a real DB UUID
+      if (UUID_REGEX.test(mId) && UUID_REGEX.test(winnerId)) {
+         const supabase = createClient()
+         const { error } = await supabase.rpc('advance_team', {
+            p_matchup_id: mId,
+            p_winner_id: winnerId,
+         })
+         if (error) {
+            console.error('advance_team RPC error:', error.message)
+         }
+      }
+   }, [mId, advanceWinner])
 
    return (
       <div 
@@ -42,7 +63,7 @@ const MatchupBox = ({ mId, isHost, onMatchupClick }: { mId: string, isHost: bool
                   placeholder="-"
                 />
                 <button 
-                  onClick={(e) => { e.stopPropagation(); advanceWinner(matchup.id, matchup.team1Id!); }}
+                  onClick={(e) => { e.stopPropagation(); handleAdvanceWinner(matchup.team1Id!); }}
                   disabled={!matchup.team1Id || !!matchup.winnerId}
                   className="w-8 h-8 flex items-center justify-center bg-blue-600 hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-md transition-all"
                 >
@@ -71,7 +92,7 @@ const MatchupBox = ({ mId, isHost, onMatchupClick }: { mId: string, isHost: bool
                   placeholder="-"
                 />
                 <button 
-                  onClick={(e) => { e.stopPropagation(); advanceWinner(matchup.id, matchup.team2Id!); }}
+                  onClick={(e) => { e.stopPropagation(); handleAdvanceWinner(matchup.team2Id!); }}
                   disabled={!matchup.team2Id || !!matchup.winnerId}
                   className="w-8 h-8 flex items-center justify-center bg-blue-600 hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-md transition-all"
                 >
