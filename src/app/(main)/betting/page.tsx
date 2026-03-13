@@ -22,7 +22,7 @@ const openMatchups = [
 
 export default function BettingPage() {
   return (
-    <div className="p-8">
+    <div className="w-full">
       <h1 className="text-3xl font-bold text-zinc-900 dark:text-white mb-2">
         Betting
       </h1>
