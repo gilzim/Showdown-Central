@@ -209,3 +209,84 @@ create policy "user_prop_bets_insert" on user_prop_bets for insert with check (a
 
 -- Realtime
 alter publication supabase_realtime add table prop_bets;
+alter publication supabase_realtime add table matchups;
+
+-- ============================================================
+-- advance_team RPC
+-- Marks a matchup as completed with the given winner and
+-- populates the winner into the correct slot of the next
+-- round's matchup. Must be called by the tournament host.
+-- ============================================================
+create or replace function public.advance_team(
+  p_matchup_id uuid,
+  p_winner_id  uuid
+)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_tournament_id uuid;
+  v_round         integer;
+  v_position      integer;
+  v_host_id       uuid;
+  v_next_round    integer;
+  v_next_position integer;
+  v_next_id       uuid;
+begin
+  -- Fetch the current matchup details
+  select tournament_id, round, position
+    into v_tournament_id, v_round, v_position
+    from matchups
+   where id = p_matchup_id;
+
+  if not found then
+    raise exception 'Matchup % not found', p_matchup_id;
+  end if;
+
+  -- Verify the caller is the tournament host
+  select host_id
+    into v_host_id
+    from tournaments
+   where id = v_tournament_id;
+
+  if v_host_id is distinct from auth.uid() then
+    raise exception 'Only the tournament host can advance teams';
+  end if;
+
+  -- Mark current matchup completed
+  update matchups
+     set winner_id    = p_winner_id,
+         status       = 'completed',
+         completed_at = now(),
+         updated_at   = now()
+   where id = p_matchup_id;
+
+  -- Determine next round slot
+  v_next_round    := v_round + 1;
+  v_next_position := ceil(v_position::numeric / 2)::integer;
+
+  select id
+    into v_next_id
+    from matchups
+   where tournament_id = v_tournament_id
+     and round         = v_next_round
+     and position      = v_next_position;
+
+  if found then
+    -- Odd position fills team_a slot; even position fills team_b slot
+    if v_position % 2 = 1 then
+      update matchups
+         set team_a_id  = p_winner_id,
+             updated_at = now()
+       where id = v_next_id;
+    else
+      update matchups
+         set team_b_id  = p_winner_id,
+             updated_at = now()
+       where id = v_next_id;
+    end if;
+  end if;
+end;
+$$;
