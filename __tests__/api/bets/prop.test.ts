@@ -6,34 +6,12 @@ import { createMocks } from 'node-mocks-http'
 
 // --- Mock Setup ---
 const mockGetUser = jest.fn()
-const mockSelect = jest.fn()
-const mockEqSelect = jest.fn()
-const mockSingleSelect = jest.fn()
-const mockUpdate = jest.fn()
-const mockEqUpdate = jest.fn()
-const mockInsert = jest.fn()
-const mockSelectInsert = jest.fn()
-const mockSingleInsert = jest.fn()
-
-const mockFrom = jest.fn((table: string) => {
-  if (table === 'profiles') {
-    return {
-      select: mockSelect.mockReturnValue({ eq: mockEqSelect.mockReturnValue({ single: mockSingleSelect }) }),
-      update: mockUpdate.mockReturnValue({ eq: mockEqUpdate }),
-    }
-  }
-  if (table === 'user_prop_bets' || table === 'transactions') {
-    return {
-      insert: mockInsert.mockReturnValue({ select: mockSelectInsert.mockReturnValue({ single: mockSingleInsert }) }),
-    }
-  }
-  return {}
-})
+const mockRpc = jest.fn()
 
 jest.mock('@/lib/supabase/server', () => ({
   createClient: jest.fn(() => ({
     auth: { getUser: mockGetUser },
-    from: mockFrom
+    rpc: mockRpc,
   }))
 }))
 
@@ -73,7 +51,7 @@ describe('POST /api/bets/prop', () => {
 
   it('should return 400 for insufficient SAPS balance', async () => {
     mockGetUser.mockResolvedValue({ data: { user: { id: 'user-1' } }, error: null })
-    mockSingleSelect.mockResolvedValue({ data: { saps_balance: 50 }, error: null }) // User has 50 SAPS
+    mockRpc.mockResolvedValue({ data: null, error: { message: 'Insufficient SAPS balance' } })
     
     const request = new Request('http://localhost/api/bets/prop', { 
       method: 'POST', 
@@ -81,7 +59,7 @@ describe('POST /api/bets/prop', () => {
         bettorId: 'user-1',
         propBetId: 'prop-1',
         optionId: 'opt-1',
-        amount: 100, // Bets 100
+        amount: 100,
         odds: 2.0
       }) 
     })
@@ -92,12 +70,9 @@ describe('POST /api/bets/prop', () => {
     expect(json.error).toBe('Insufficient SAPS balance')
   })
 
-  it('should deduct balance and create bet successfully', async () => {
+  it('should atomically place prop bet via RPC and return new balance', async () => {
     mockGetUser.mockResolvedValue({ data: { user: { id: 'user-1' } }, error: null })
-    mockSingleSelect.mockResolvedValue({ data: { saps_balance: 500 }, error: null }) // User has 500 SAPS
-    mockEqUpdate.mockResolvedValue({ error: null }) // Balance update succeeds
-    mockSingleInsert.mockResolvedValue({ data: { id: 'bet-888' }, error: null }) // Bet creation succeeds
-    mockInsert.mockResolvedValue({ error: null }) // Transaction log succeeds (no chained select)
+    mockRpc.mockResolvedValue({ data: { bet_id: 'bet-888', new_balance: 400, payout: 200, amount: 100, odds_at_bet: 2.0, status: 'pending' }, error: null })
     
     const request = new Request('http://localhost/api/bets/prop', { 
       method: 'POST', 
@@ -114,24 +89,20 @@ describe('POST /api/bets/prop', () => {
     expect(response.status).toBe(200)
     const json = await response.json()
     expect(json.success).toBe(true)
-    expect(json.newBalance).toBe(400) // 500 - 100
-    
-    // Verify mock expectations
-    expect(mockEqUpdate).toHaveBeenCalledWith('id', 'user-1')
-    expect(mockInsert).toHaveBeenCalledWith(expect.objectContaining({
-      bettor_id: 'user-1',
-      prop_bet_id: 'prop-1',
-      option_id: 'opt-1',
-      amount: 100,
-      odds_at_bet: 2.0,
+    expect(json.newBalance).toBe(400)
+    expect(json.bet).toEqual(expect.objectContaining({
+      id: 'bet-888',
       payout: 200,
-      status: 'pending'
+      status: 'pending',
     }))
-    expect(mockInsert).toHaveBeenCalledWith(expect.objectContaining({
-       user_id: 'user-1',
-       type: 'bet_place',
-       amount: -100,
-       reference_id: 'bet-888'
-    }))
+
+    // Verify RPC was called with correct parameters
+    expect(mockRpc).toHaveBeenCalledWith('place_prop_bet', {
+      p_prop_bet_id: 'prop-1',
+      p_option_id: 'opt-1',
+      p_amount: 100,
+      p_odds: 2.0,
+    })
   })
 })
+
