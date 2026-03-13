@@ -216,6 +216,18 @@ alter publication supabase_realtime add table prop_bets;
 alter publication supabase_realtime add table matchups;
 
 -- ============================================================
+-- place_bet RPC
+-- Atomically deducts SAPS balance, inserts a bet record, and
+-- records a transaction ledger entry. Rolls back on any failure.
+-- Must be called by the authenticated bettor.
+-- ============================================================
+create or replace function public.place_bet(
+  p_matchup_id uuid,
+  p_team_id    uuid,
+  p_amount     int,
+  p_odds       numeric
+)
+returns json
 -- claim_refill RPC
 -- Awards a 500-SAPS bankruptcy-protection refill to the
 -- authenticated user when their balance is exactly 0.
@@ -231,6 +243,25 @@ security definer
 set search_path = public
 as $$
 declare
+  v_user_id     uuid;
+  v_balance     integer;
+  v_new_balance integer;
+  v_bet_id      uuid;
+begin
+  v_user_id := auth.uid();
+  if v_user_id is null then
+    raise exception 'Unauthorized';
+  end if;
+
+  if p_amount <= 0 then
+    raise exception 'Amount must be positive';
+  end if;
+
+  -- Lock the profile row to prevent concurrent double-spend
+  select saps_balance into v_balance
+    from profiles
+   where id = v_user_id
+     for update;
   v_user_id          uuid;
   v_balance          integer;
   v_last_refill      timestamptz;
@@ -251,6 +282,104 @@ begin
     raise exception 'Profile not found';
   end if;
 
+  if v_balance < p_amount then
+    raise exception 'Insufficient SAPS balance';
+  end if;
+
+  v_new_balance := v_balance - p_amount;
+
+  -- Deduct balance
+  update profiles
+     set saps_balance = v_new_balance,
+         updated_at   = now()
+   where id = v_user_id;
+
+  -- Insert bet record
+  insert into bets (bettor_id, matchup_id, team_id, amount, odds_at_bet, status)
+  values (v_user_id, p_matchup_id, p_team_id, p_amount, p_odds, 'pending')
+  returning id into v_bet_id;
+
+  -- Insert transaction ledger entry
+  insert into transactions (user_id, type, amount, reference_id, description)
+  values (v_user_id, 'bet_place', -p_amount, v_bet_id, 'Wager placed on Matchup');
+
+  return json_build_object('bet_id', v_bet_id, 'new_balance', v_new_balance);
+end;
+$$;
+
+-- ============================================================
+-- place_prop_bet RPC
+-- Atomically deducts SAPS balance, inserts a user_prop_bets
+-- record, and records a transaction ledger entry.
+-- Must be called by the authenticated bettor.
+-- ============================================================
+create or replace function public.place_prop_bet(
+  p_prop_bet_id uuid,
+  p_option_id   text,
+  p_amount      int,
+  p_odds        numeric
+)
+returns json
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_user_id     uuid;
+  v_balance     integer;
+  v_new_balance integer;
+  v_payout      integer;
+  v_bet_id      uuid;
+begin
+  v_user_id := auth.uid();
+  if v_user_id is null then
+    raise exception 'Unauthorized';
+  end if;
+
+  if p_amount <= 0 then
+    raise exception 'Amount must be positive';
+  end if;
+
+  -- Lock the profile row to prevent concurrent double-spend
+  select saps_balance into v_balance
+    from profiles
+   where id = v_user_id
+     for update;
+
+  if not found then
+    raise exception 'Profile not found';
+  end if;
+
+  if v_balance < p_amount then
+    raise exception 'Insufficient SAPS balance';
+  end if;
+
+  v_new_balance := v_balance - p_amount;
+  v_payout      := floor(p_amount * p_odds);
+
+  -- Deduct balance
+  update profiles
+     set saps_balance = v_new_balance,
+         updated_at   = now()
+   where id = v_user_id;
+
+  -- Insert prop bet record
+  insert into user_prop_bets (bettor_id, prop_bet_id, option_id, amount, odds_at_bet, payout, status)
+  values (v_user_id, p_prop_bet_id, p_option_id, p_amount, p_odds, v_payout, 'pending')
+  returning id into v_bet_id;
+
+  -- Insert transaction ledger entry
+  insert into transactions (user_id, type, amount, reference_id, description)
+  values (v_user_id, 'bet_place', -p_amount, v_bet_id, 'Placed prop bet');
+
+  return json_build_object(
+    'bet_id',      v_bet_id,
+    'new_balance', v_new_balance,
+    'payout',      v_payout,
+    'amount',      p_amount,
+    'odds_at_bet', p_odds,
+    'status',      'pending'
+  );
   -- Balance must be 0 to claim a refill
   if v_balance <> 0 then
     raise exception 'Balance must be 0 to claim a refill';
