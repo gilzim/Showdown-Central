@@ -36,7 +36,7 @@ export default async function TournamentsPage() {
   const teamsCountMap = Object.fromEntries(teamsCountData.map((d) => [d.id, d.count]))
 
   return (
-    <div className="w-full max-w-7xl mx-auto">
+    <div className="w-full">
       <div className="flex items-center justify-between mb-8">
         <div>
           <h1 className="text-3xl font-bold text-white mb-1">

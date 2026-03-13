@@ -67,9 +67,9 @@ export default function TournamentCard({
 
       <Link
         href={`/tournaments/${id}`}
-        className="mt-auto w-full rounded-lg border border-indigo-600 px-4 py-2 text-sm font-medium text-indigo-600 hover:bg-indigo-600 hover:text-white transition-colors dark:border-indigo-400 dark:text-indigo-400 dark:hover:bg-indigo-600 dark:hover:text-white text-center"
+        className="mt-auto w-full rounded-lg border border-indigo-600 px-4 py-2 text-sm font-medium text-indigo-600 hover:bg-indigo-600 hover:text-white transition-colors dark:border-indigo-400 dark:text-indigo-400 dark:hover:bg-indigo-600 dark:hover:text-white text-center flex items-center justify-center gap-1.5"
       >
-        <Trophy className="inline h-4 w-4 mr-1.5 -mt-0.5" />
+        <Trophy className="inline h-4 w-4" />
         View Bracket
       </Link>
     </div>

@@ -133,7 +133,7 @@ export default async function DashboardPage() {
            </div>
            {joinedTeams && joinedTeams.length > 0 ? (
              <ul className="flex flex-col gap-2">
-               {joinedTeams.map((jt: JoinedTeam) => {
+               {(joinedTeams as JoinedTeam[]).map((jt) => {
                  const t = jt.tournaments
                  if (!t) return null
                  return (
@@ -183,4 +183,3 @@ export default async function DashboardPage() {
     </div>
   )
 }
-

@@ -48,7 +48,7 @@ export default async function BettingPage() {
   const activeMatchups = (matchups || []) as unknown as ActiveMatchup[]
 
   return (
-    <div className="w-full max-w-7xl mx-auto">
+    <div className="w-full">
       <h1 className="text-3xl font-bold text-white mb-2">
         Betting
       </h1>
