@@ -58,11 +58,15 @@ export default async function BettingPage() {
             <p className="text-zinc-500">No live matchups right now.</p>
           ) : (
             activeMatchups.map((matchup) => {
-              const tournament = matchup.tournaments as {
-                id: string;
-                name: string;
-                status: string;
-              };
+              const tournament = Array.isArray(matchup.tournaments)
+                ? matchup.tournaments[0]
+                : (matchup.tournaments as unknown as {
+                    id: string;
+                    name: string;
+                    status: string;
+                  });
+              
+              if (!tournament) return null;
               return (
                 <BettingSlip
                   key={matchup.id}

@@ -9,15 +9,19 @@ create extension if not exists "uuid-ossp";
 -- profiles
 -- ============================================================
 create table if not exists profiles (
-  id           uuid primary key references auth.users (id) on delete cascade,
-  username     text not null unique,
-  display_name text,
-  avatar_url   text,
-  saps_balance integer not null default 500,
-  role         text not null default 'player' check (role in ('player', 'host', 'admin')),
-  created_at   timestamptz not null default now(),
-  updated_at   timestamptz not null default now()
+  id             uuid primary key references auth.users (id) on delete cascade,
+  username       text not null unique,
+  display_name   text,
+  avatar_url     text,
+  saps_balance   integer not null default 500,
+  role           text not null default 'player' check (role in ('player', 'host', 'admin')),
+  last_refill_at timestamptz,
+  created_at     timestamptz not null default now(),
+  updated_at     timestamptz not null default now()
 );
+
+-- Migration: add last_refill_at column if it does not already exist
+alter table profiles add column if not exists last_refill_at timestamptz;
 
 -- Auto-create profile row when a new auth user is created
 create or replace function public.handle_new_user()
@@ -224,6 +228,16 @@ create or replace function public.place_bet(
   p_odds       numeric
 )
 returns json
+-- claim_refill RPC
+-- Awards a 500-SAPS bankruptcy-protection refill to the
+-- authenticated user when their balance is exactly 0.
+--
+-- Cooldown: the infrastructure is in place (last_refill_at is
+-- recorded on every call). To enforce a 24-hour cooldown in the
+-- future, change v_cooldown_hours from 0 to 24.
+-- ============================================================
+create or replace function public.claim_refill()
+returns jsonb
 language plpgsql
 security definer
 set search_path = public
@@ -248,6 +262,21 @@ begin
     from profiles
    where id = v_user_id
      for update;
+  v_user_id          uuid;
+  v_balance          integer;
+  v_last_refill      timestamptz;
+  -- Set to 0 to disable cooldown; change to 24 to enforce a 24-hour cooldown
+  v_cooldown_hours   constant integer := 0;
+begin
+  v_user_id := auth.uid();
+  if v_user_id is null then
+    raise exception 'Not authenticated';
+  end if;
+
+  select saps_balance, last_refill_at
+    into v_balance, v_last_refill
+    from profiles
+   where id = v_user_id;
 
   if not found then
     raise exception 'Profile not found';
@@ -351,6 +380,30 @@ begin
     'odds_at_bet', p_odds,
     'status',      'pending'
   );
+  -- Balance must be 0 to claim a refill
+  if v_balance <> 0 then
+    raise exception 'Balance must be 0 to claim a refill';
+  end if;
+
+  -- Cooldown check — disabled when v_cooldown_hours = 0
+  if v_cooldown_hours > 0 and v_last_refill is not null then
+    if now() - v_last_refill < (v_cooldown_hours || ' hours')::interval then
+      raise exception 'Refill cooldown active. Please wait before claiming again.';
+    end if;
+  end if;
+
+  -- Apply refill
+  update profiles
+     set saps_balance   = 500,
+         last_refill_at = now(),
+         updated_at     = now()
+   where id = v_user_id;
+
+  -- Log the bonus transaction
+  insert into transactions (user_id, type, amount, description)
+  values (v_user_id, 'bonus', 500, 'Bankruptcy protection refill');
+
+  return jsonb_build_object('new_balance', 500);
 end;
 $$;
 
