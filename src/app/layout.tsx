@@ -20,7 +20,7 @@ export default function RootLayout({
   return (
     <html lang="en" className="dark">
       <body
-        className={`${outfit.className} antialiased min-h-screen bg-slate-900 text-slate-50 flex flex-col items-center p-4 sm:p-10`}
+        className={`${outfit.className} antialiased min-h-screen bg-slate-900 text-slate-50`}
       >
         <SupabaseProvider>
           {children}

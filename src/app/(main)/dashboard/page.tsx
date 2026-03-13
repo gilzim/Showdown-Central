@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { Trophy, Coins, Users, TrendingUp, LogOut } from 'lucide-react'
+import Link from 'next/link'
 import DashboardJoinButton from '@/components/dashboard/DashboardJoinButton'
 export default async function DashboardPage() {
   const supabase = await createClient()
@@ -62,9 +63,9 @@ export default async function DashboardPage() {
              <h2 className="text-xl font-bold text-slate-100">Live Tournaments</h2>
            </div>
            <p className="text-slate-400">You have no active tournaments.</p>
-           <a href="/tournaments/host" className="mt-auto py-3 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl transition-colors text-center w-full block">
+           <Link href="/tournaments/host" className="mt-auto py-3 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl transition-colors text-center w-full block">
              Host New Tournament
-           </a>
+           </Link>
         </div>
 
         <div className="p-6 rounded-2xl bg-slate-800/50 backdrop-blur-xl border border-slate-700/50 shadow-xl flex flex-col gap-4">
