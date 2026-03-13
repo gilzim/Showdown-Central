@@ -165,6 +165,12 @@ create policy "matchups_update_host" on matchups for update
       select host_id from tournaments where id = tournament_id
     )
   );
+create policy "matchups_insert_host" on matchups for insert
+  with check (
+    auth.uid() = (
+      select host_id from tournaments where id = tournament_id
+    )
+  );
 
 -- bets: bettor owns their bets
 create policy "bets_select_own"  on bets for select using (auth.uid() = bettor_id);
