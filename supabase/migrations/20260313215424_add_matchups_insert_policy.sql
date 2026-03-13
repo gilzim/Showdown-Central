@@ -1,7 +1,2 @@
--- Add missing INSERT policy for matchups table to allow tournament hosts to create matchups.
-CREATE POLICY "matchups_insert_host" ON public.matchups FOR INSERT
-WITH CHECK (
-  auth.uid() = (
-    SELECT host_id FROM public.tournaments WHERE id = tournament_id
-  )
-);
+-- Redundant policy fix migrated to initial_schema.sql
+-- This file is intentionally left empty to fix migration order dependency.
