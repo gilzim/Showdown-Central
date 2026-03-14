@@ -45,18 +45,27 @@ export default async function ProfilePage() {
 
   // Build participant entries, excluding tournaments already listed as hosted
   const hostedIds = new Set(hostedEntries.map((e) => e.id))
-  const participantEntries = (captainTeams ?? []).flatMap((team) => {
-    const t = Array.isArray(team.tournaments) ? team.tournaments[0] : team.tournaments
-    if (!t || hostedIds.has(t.id)) return []
-    return [{
-      id: t.id,
-      name: t.name,
-      status: t.status as string,
-      endsAt: (t.ends_at ?? null) as string | null,
-      role: `Captain (${team.name})` as string,
-      href: `/tournaments/${t.id}`,
-    }]
-  })
+  const seenParticipantTournamentIds = new Set<string | number>()
+  const participantEntries = (captainTeams ?? [])
+    .flatMap((team) => {
+      const t = Array.isArray(team.tournaments) ? team.tournaments[0] : team.tournaments
+      if (!t || hostedIds.has(t.id)) return []
+      return [{
+        id: t.id,
+        name: t.name,
+        status: t.status as string,
+        endsAt: (t.ends_at ?? null) as string | null,
+        role: `Captain (${team.name})` as string,
+        href: `/tournaments/${t.id}`,
+      }]
+    })
+    .filter((entry) => {
+      if (seenParticipantTournamentIds.has(entry.id)) {
+        return false
+      }
+      seenParticipantTournamentIds.add(entry.id)
+      return true
+    })
 
   const tournamentHistory = [...hostedEntries, ...participantEntries]
 
