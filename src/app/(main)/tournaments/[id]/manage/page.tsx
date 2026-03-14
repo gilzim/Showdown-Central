@@ -138,6 +138,7 @@ export default async function HostManagePage({
         tournamentName={tournament.name}
         initialTeams={teams}
         initialMatchups={matchups}
+        initialStatus={tournament.status as 'draft' | 'upcoming' | 'active' | 'completed' | 'cancelled'}
       />
     </div>
   )

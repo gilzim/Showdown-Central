@@ -13,6 +13,7 @@ export default function HostSettingsPanel() {
   const [mode, setMode] = useState<'Manual' | 'Self-Reg'>('Manual')
   const [joinCode, setJoinCode] = useState<string | null>(null)
   const [tournamentName, setTournamentName] = useState('My Awesome Tournament')
+  const [gameName, setGameName] = useState('')
   const [isSaving, setIsSaving] = useState(false)
 
   const generateCode = () => {
@@ -32,7 +33,7 @@ export default function HostSettingsPanel() {
          headers: { 'Content-Type': 'application/json' },
          body: JSON.stringify({
            name: tournamentName,
-           game: 'Any Game',
+           game: gameName.trim() || 'Any Game',
            mode,
            join_code: joinCode,
            max_teams: teamsCount,
@@ -67,6 +68,17 @@ export default function HostSettingsPanel() {
                   value={tournamentName}
                   onChange={(e) => setTournamentName(e.target.value)}
                   className="w-full bg-slate-900 border border-slate-600 focus:border-blue-500 rounded-lg px-4 py-2 outline-none transition-all font-semibold"
+                />
+             </div>
+
+             <div>
+                <label className="text-sm font-semibold text-slate-400 mb-1 block">Game / Sport</label>
+                <input
+                  type="text"
+                  value={gameName}
+                  onChange={(e) => setGameName(e.target.value)}
+                  placeholder="e.g. FIFA, Chess, Valorant"
+                  className="w-full bg-slate-900 border border-slate-600 focus:border-blue-500 rounded-lg px-4 py-2 outline-none transition-all"
                 />
              </div>
              
