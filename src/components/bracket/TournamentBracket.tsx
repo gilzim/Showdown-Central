@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { useParams } from 'next/navigation'
 import { useTournamentStore, MatchupNode } from '@/store/useTournamentStore'
 import { ZoomIn, ZoomOut, Maximize, Shuffle, Trash2, RotateCcw } from 'lucide-react'
+import { useUIStore } from '@/store/useUIStore'
 
 import { BracketVisualizer } from './BracketVisualizer'
 import BetModal from '../betting/BetModal'
@@ -28,6 +29,8 @@ export default function TournamentBracket({ isHost = true, onMatchupSelect }: To
     randomizeTeams,
     resetBracket
   } = useTournamentStore()
+
+  const { showConfirm } = useUIStore()
 
   const [zoom, setZoom] = useState(1)
   
@@ -69,8 +72,16 @@ export default function TournamentBracket({ isHost = true, onMatchupSelect }: To
              <select 
                className="bg-slate-900 border border-slate-700 text-white rounded-lg px-3 py-1.5 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none"
                value={teamsCount}
-               onChange={(e) => {
-                 if(confirm(`Changing team count to ${e.target.value} will reset the tournament. Are you sure?`)) {
+               onChange={async (e) => {
+                 const confirmed = await showConfirm(
+                   'Reset Tournament',
+                   `Changing team count to ${e.target.value} will reset the tournament. Are you sure?`,
+                   'Reset Bracket',
+                   'Keep Current',
+                   'danger',
+                   'RotateCcw'
+                 )
+                 if(confirmed) {
                     setTeamsCount(Number(e.target.value))
                  }
                }}
@@ -89,8 +100,16 @@ export default function TournamentBracket({ isHost = true, onMatchupSelect }: To
           <button onClick={resetBracket} className="flex items-center gap-2 px-3 py-1.5 bg-orange-500/10 text-orange-400 hover:bg-orange-500/20 border border-orange-500/30 rounded-lg text-sm font-semibold transition-all">
             <RotateCcw className="w-4 h-4" /> Reset Bracket
           </button>
-          <button onClick={() => {
-             if(confirm("Start new tournament?")) setTeamsCount(8)
+          <button onClick={async () => {
+             const confirmed = await showConfirm(
+               "New Tournament", 
+               "Start new tournament? This will clear all existing data.",
+               "New Tournament",
+               "Cancel",
+               "danger",
+               "Trophy"
+             )
+             if(confirmed) setTeamsCount(8)
           }} className="flex items-center gap-2 px-3 py-1.5 bg-red-500/10 text-red-400 hover:bg-red-500/20 border border-red-500/30 rounded-lg text-sm font-semibold transition-all">
             <Trash2 className="w-4 h-4" /> New
           </button>

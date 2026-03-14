@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Outfit } from "next/font/google";
 import "./globals.css";
 import SupabaseProvider from "@/components/providers/SupabaseProvider";
+import GlobalModal from "@/components/providers/GlobalModal";
 
 const outfit = Outfit({
   subsets: ["latin"],
@@ -24,6 +25,7 @@ export default function RootLayout({
       >
         <SupabaseProvider>
           {children}
+          <GlobalModal />
         </SupabaseProvider>
       </body>
     </html>

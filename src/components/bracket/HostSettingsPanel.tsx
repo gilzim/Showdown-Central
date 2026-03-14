@@ -5,6 +5,7 @@ import { useParams } from 'next/navigation'
 import { Settings, Users, Key, Save } from 'lucide-react'
 import { MatchupNode, Team, useTournamentStore } from '@/store/useTournamentStore'
 import { PropBetsPanel } from '../betting/PropBetsPanel'
+import { useUIStore } from '@/store/useUIStore'
 
 export default function HostSettingsPanel() {
   const params = useParams()
@@ -15,6 +16,8 @@ export default function HostSettingsPanel() {
   const [tournamentName, setTournamentName] = useState('My Awesome Tournament')
   const [gameName, setGameName] = useState('')
   const [isSaving, setIsSaving] = useState(false)
+
+  const { showAlert } = useUIStore()
 
   const generateCode = () => {
     // Generate 6 alphanumeric chars
@@ -42,10 +45,10 @@ export default function HostSettingsPanel() {
          })
        })
        if (!res.ok) throw new Error('Failed to save')
-       alert('Tournament saved successfully!')
+       showAlert('Success', 'Tournament saved successfully!', 'Dismiss', 'success', 'Cloud')
      } catch (err) {
        console.error(err)
-       alert('Error saving tournament.')
+       showAlert('Error', 'Error saving tournament.', 'Dismiss', 'danger', 'AlertTriangle')
      } finally {
        setIsSaving(false)
      }

@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { Plus, Trash2, Loader2, Save, X, Coins } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { useSapsStore } from '@/store/useSapsStore'
+import { useUIStore } from '@/store/useUIStore'
 
 interface PropBetOption {
   id: string
@@ -34,6 +35,7 @@ export function PropBetsPanel({ tournamentId, isHost }: PropBetsPanelProps) {
   
   const supabase = createClient()
   const { balance, setBalance } = useSapsStore()
+  const { showAlert } = useUIStore()
 
   // New Bet State
   const [newQuestion, setNewQuestion] = useState('')
@@ -113,11 +115,11 @@ export function PropBetsPanel({ tournamentId, isHost }: PropBetsPanelProps) {
 
   const handlePlaceWager = async (bet: PropBet, option: PropBetOption) => {
      const wagerAmount = wagers[bet.id] || 0
-     if (wagerAmount <= 0) return alert('Please enter a valid wager amount.')
-     if (balance < wagerAmount) return alert('Insufficient SAPS balance.')
+     if (wagerAmount <= 0) return showAlert('Invalid Amount', 'Please enter a valid wager amount.', 'OK', 'info', 'AlertCircle')
+     if (balance < wagerAmount) return showAlert('Insufficient Balance', 'Insufficient SAPS balance.', 'OK', 'danger', 'AlertTriangle')
 
      const { data: { user } } = await supabase.auth.getUser()
-     if (!user) return alert('You must be logged in to place a bet.')
+     if (!user) return showAlert('Authentication Required', 'You must be logged in to place a bet.', 'OK', 'danger', 'Key')
 
      setPlacingBetId(option.id)
 
@@ -144,10 +146,10 @@ export function PropBetsPanel({ tournamentId, isHost }: PropBetsPanelProps) {
        
        // Clear wager input
        setWagers(prev => ({ ...prev, [bet.id]: 0 }))
-       alert(`Successfully placed ${wagerAmount} SAPS on "${option.text}"!`)
+       showAlert('Bet Placed', `Successfully placed ${wagerAmount} SAPS on "${option.text}"!`, 'Great!', 'success', 'Coins')
 
      } catch (err: any) {
-       alert(err.message)
+       showAlert('Error', err.message, 'Dismiss', 'danger', 'AlertTriangle')
      } finally {
        setPlacingBetId(null)
      }

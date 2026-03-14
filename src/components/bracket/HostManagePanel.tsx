@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Trophy, CheckCircle, Swords, ChevronRight, Save, Loader2, Users, Plus, Trash2, Edit2, X, Check, Shuffle, PlayCircle, XCircle, FlagTriangleRight } from 'lucide-react'
 import { PropBetsPanel } from '@/components/betting/PropBetsPanel'
+import { useUIStore } from '@/store/useUIStore'
 
 interface Team {
   id: string
@@ -53,6 +54,8 @@ export default function HostManagePanel({
   const [newTeamName, setNewTeamName] = useState('')
   const [editingTeam, setEditingTeam] = useState<{ id: string, name: string } | null>(null)
   const [isProcessingTeam, setIsProcessingTeam] = useState(false)
+
+  const { showConfirm } = useUIStore()
 
   const hydrated = useRef(false)
   const supabase = createClient()
@@ -114,7 +117,15 @@ export default function HostManagePanel({
   }
 
   const handleUpdateStatus = async (newStatus: TournamentStatus) => {
-    if (!confirm(`Set tournament status to "${newStatus}"?`)) return
+    const confirmed = await showConfirm(
+      'Update Status',
+      `Are you sure you want to set the tournament status to "${newStatus}"?`,
+      'Update Status',
+      'Cancel',
+      'info',
+      'Flag'
+    )
+    if (!confirmed) return
     setUpdatingStatus(true)
     try {
       const res = await fetch(`/api/tournaments/${tournamentId}/status`, {
@@ -155,7 +166,15 @@ export default function HostManagePanel({
   }
 
   const handleDeclareWinner = async (matchupId: string, winnerId: string) => {
-    if (!confirm('Declare this team as winner? This will advance the bracket.')) return
+    const confirmed = await showConfirm(
+      'Declare Winner',
+      'Are you sure you want to declare this team as the winner? This will advance the bracket.',
+      'Declare Winner',
+      'Cancel',
+      'success',
+      'Trophy'
+    )
+    if (!confirmed) return
     setAdvancing(matchupId)
     try {
       const { error } = await supabase.rpc('advance_team', {
@@ -211,7 +230,15 @@ export default function HostManagePanel({
   }
 
   const handleDeleteTeam = async (teamId: string) => {
-    if (!confirm('Remove this team? This may break existing matchups.')) return
+    const confirmed = await showConfirm(
+      'Remove Participant',
+      'Are you sure you want to remove this team? This may break existing matchups.',
+      'Remove Team',
+      'Keep Team',
+      'danger',
+      'Trash2'
+    )
+    if (!confirmed) return
     setIsProcessingTeam(true)
     try {
       const res = await fetch(`/api/tournaments/${tournamentId}/teams`, {
@@ -427,13 +454,13 @@ export default function HostManagePanel({
                                 <div className="flex gap-1">
                                   <button
                                     onClick={() => handleDeclareWinner(matchup.id, tA!.id)}
-                                    className="flex-1 py-1.5 bg-blue-600/20 hover:bg-blue-600 text-blue-400 hover:text-white rounded-lg text-[10px] font-black uppercase transition-all"
+                                    className="flex-1 py-1.5 bg-emerald-600/20 hover:bg-emerald-600 text-emerald-400 hover:text-white rounded-lg text-[10px] font-black uppercase transition-all"
                                   >
                                     A Win
                                   </button>
                                   <button
                                     onClick={() => handleDeclareWinner(matchup.id, tB!.id)}
-                                    className="flex-1 py-1.5 bg-blue-600/20 hover:bg-blue-600 text-blue-400 hover:text-white rounded-lg text-[10px] font-black uppercase transition-all"
+                                    className="flex-1 py-1.5 bg-emerald-600/20 hover:bg-emerald-600 text-emerald-400 hover:text-white rounded-lg text-[10px] font-black uppercase transition-all"
                                   >
                                     B Win
                                   </button>
