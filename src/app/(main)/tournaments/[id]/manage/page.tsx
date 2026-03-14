@@ -53,10 +53,20 @@ export default async function HostManagePage({
     )
   }
 
-  // 4. Fetch teams
+  // 4. Fetch teams with members
   const { data: teamsData } = await supabase
     .from('teams')
-    .select('id, name')
+    .select(`
+      id, 
+      name,
+      team_members (
+        profiles (
+          id,
+          username,
+          display_name
+        )
+      )
+    `)
     .eq('tournament_id', tournamentId)
     .order('created_at', { ascending: true })
 
@@ -68,7 +78,15 @@ export default async function HostManagePage({
     .order('round', { ascending: true })
     .order('position', { ascending: true })
 
-  const teams = (teamsData ?? []).map((t) => ({ id: t.id, name: t.name }))
+  const teams = (teamsData ?? []).map((t: any) => ({
+    id: t.id,
+    name: t.name,
+    members: t.team_members?.map((m: any) => ({
+      id: m.profiles.id,
+      username: m.profiles.username,
+      display_name: m.profiles.display_name
+    })) || []
+  }))
 
   const matchups = (matchupsData ?? []).map((m) => ({
     id: String(m.id),

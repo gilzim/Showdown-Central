@@ -23,10 +23,20 @@ export default async function SpectatorPage({ params }: { params: Promise<{ id: 
     notFound()
   }
 
-  // 2. Fetch Teams
+  // 2. Fetch Teams with Members
   const { data: teamsData } = await supabase
     .from('teams')
-    .select('id, name')
+    .select(`
+      id, 
+      name,
+      team_members (
+        profiles (
+          id,
+          username,
+          display_name
+        )
+      )
+    `)
     .eq('tournament_id', tournamentId)
 
   // 3. Fetch Matchups (order to preserve correct bracket rendering)
@@ -35,11 +45,14 @@ export default async function SpectatorPage({ params }: { params: Promise<{ id: 
     .select('id, round, position, team_a_id, team_b_id, team_a_score, team_b_score, winner_id')
     .eq('tournament_id', tournamentId)
 
-  const mappedTeams = (teamsData || []).map(t => ({
+  const mappedTeams = (teamsData || []).map((t: any) => ({
     id: t.id,
     name: t.name,
-    p1: '',
-    p2: ''
+    members: t.team_members?.map((m: any) => ({
+      id: m.profiles.id,
+      username: m.profiles.username,
+      display_name: m.profiles.display_name
+    })) || []
   }))
 
   const mappedMatchups = (matchupsData || []).map(m => ({

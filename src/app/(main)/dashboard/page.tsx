@@ -28,14 +28,31 @@ export default async function DashboardPage() {
 
   const activeTournaments = hostedTournaments ?? []
 
-  // Fetch tournaments where the user is a team captain (Joined by You)
-  const { data: joinedTeams } = await supabase
-    .from('teams')
-    .select('id, name, tournament_id, tournaments(id, name, status)')
-    .eq('captain_id', user.id)
+  // Fetch tournaments where the user is a team member (Joined by You)
+  const { data: joinedTeamsData } = await supabase
+    .from('team_members')
+    .select(`
+      team_id,
+      teams (
+        id,
+        name,
+        tournament_id,
+        tournaments (
+          id,
+          name,
+          status
+        )
+      )
+    `)
+    .eq('user_id', user.id)
     .limit(5)
 
-  const joinedTournaments = joinedTeams ?? []
+  const joinedTournaments = (joinedTeamsData ?? []).map((tm: any) => ({
+    id: tm.teams.id,
+    name: tm.teams.name,
+    tournament_id: tm.teams.tournament_id,
+    tournaments: tm.teams.tournaments
+  }))
 
   // Fetch active bets (Matchup bets)
   const { data: matchupBets } = await supabase

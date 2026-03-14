@@ -127,9 +127,8 @@ export default function TournamentBracket({ isHost = true, onMatchupSelect }: To
             <thead>
               <tr className="border-b border-slate-700 text-slate-400 text-sm uppercase tracking-wider">
                 <th className="pb-3 font-semibold w-16 px-4">Seed</th>
-                <th className="pb-3 font-semibold px-4 w-[30%]">Team Name</th>
-                <th className="pb-3 font-semibold px-4">Player 1</th>
-                <th className="pb-3 font-semibold px-4">Player 2</th>
+                <th className="pb-3 font-semibold px-4 w-[25%] text-white">Team Name</th>
+                <th className="pb-3 font-semibold px-4 text-white">Members</th>
               </tr>
             </thead>
             <tbody>
@@ -137,27 +136,24 @@ export default function TournamentBracket({ isHost = true, onMatchupSelect }: To
                 <tr key={team.id} className="border-b border-slate-700/50 hover:bg-white/5 transition-colors group">
                   <td className="py-2 px-4 text-slate-500 font-mono">{idx + 1}</td>
                   <td className="py-2 px-4">
-                    <input 
-                      value={team.name}
-                      onChange={(e) => updateTeam(team.id, { name: e.target.value })}
-                      className="bg-transparent border border-transparent focus:border-slate-600 focus:bg-slate-900/50 rounded-md px-2 py-1 w-full outline-none transition-all font-semibold"
-                    />
+                    <span className="font-bold text-white">{team.name}</span>
                   </td>
                   <td className="py-2 px-4">
-                    <input 
-                      value={team.p1}
-                      placeholder="P1 Name"
-                      onChange={(e) => updateTeam(team.id, { p1: e.target.value })}
-                      className="bg-transparent border border-transparent focus:border-slate-600 focus:bg-slate-900/50 rounded-md px-2 py-1 w-full outline-none transition-all text-slate-300 placeholder:text-slate-600"
-                    />
-                  </td>
-                  <td className="py-2 px-4">
-                    <input 
-                      value={team.p2}
-                      placeholder="P2 Name"
-                      onChange={(e) => updateTeam(team.id, { p2: e.target.value })}
-                      className="bg-transparent border border-transparent focus:border-slate-600 focus:bg-slate-900/50 rounded-md px-2 py-1 w-full outline-none transition-all text-slate-300 placeholder:text-slate-600"
-                    />
+                    <div className="flex flex-wrap gap-2">
+                      {team.members && team.members.length > 0 ? (
+                        team.members.map(member => (
+                          <span 
+                            key={member.id} 
+                            className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-slate-700/50 border border-slate-600/50 rounded-lg text-xs font-semibold text-slate-300"
+                          >
+                            <span className="w-1.5 h-1.5 rounded-full bg-blue-400" />
+                            {member.display_name || member.username}
+                          </span>
+                        ))
+                      ) : (
+                        <span className="text-xs italic text-slate-600">No members</span>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))}

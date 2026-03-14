@@ -28,14 +28,29 @@ export default async function ProfilePage() {
       .eq('host_id', user.id)
       .order('created_at', { ascending: false }),
     supabase
-      .from('teams')
-      .select('id, name, tournament_id, tournaments(id, name, status, starts_at, ends_at, created_at)')
-      .eq('captain_id', user.id)
-      .order('created_at', { ascending: false }),
+      .from('team_members')
+      .select(`
+        team_id,
+        teams (
+          id,
+          name,
+          tournament_id,
+          tournaments (
+            id,
+            name,
+            status,
+            starts_at,
+            ends_at,
+            created_at
+          )
+        )
+      `)
+      .eq('user_id', user.id)
+      .order('joined_at', { ascending: false }),
   ])
 
   if (hostedError) console.error('[ProfilePage] hosted tournaments query failed:', hostedError.message)
-  if (captainError) console.error('[ProfilePage] captain teams query failed:', captainError.message)
+  if (captainError) console.error('[ProfilePage] participant teams query failed:', captainError.message)
 
   const queryError = hostedError ?? captainError
 
@@ -54,8 +69,9 @@ export default async function ProfilePage() {
   const hostedIds = new Set(hostedEntries.map((e) => e.id))
   const seenParticipantTournamentIds = new Set<string>()
   const participantEntries = (captainTeams ?? [])
-    .flatMap((team) => {
-      const t = Array.isArray(team.tournaments) ? team.tournaments[0] : team.tournaments
+    .flatMap((tm: any) => {
+      const team = tm.teams
+      const t = team?.tournaments
       if (!t || hostedIds.has(t.id)) return []
       return [{
         id: t.id,
@@ -64,7 +80,7 @@ export default async function ProfilePage() {
         startsAt: (t.starts_at ?? null) as string | null,
         endsAt: (t.ends_at ?? null) as string | null,
         createdAt: t.created_at as string,
-        role: `Captain (${team.name})` as string,
+        role: `Member (${team.name})` as string,
         href: `/tournaments/${t.id}`,
       }]
     })

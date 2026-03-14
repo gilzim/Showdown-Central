@@ -50,16 +50,17 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Tournament is full.' }, { status: 403 })
     }
 
-    // 5. Check if user is already enrolled
-    const { data: existingTeam } = await supabase
-      .from('teams')
+    // 5. Check if user is already enrolled in any team in this tournament
+    const { data: existingMember } = await supabase
+      .from('team_members')
       .select('id')
-      .eq('tournament_id', tournament.id)
-      .eq('captain_id', user.id)
-      .single()
+      .eq('user_id', user.id)
+      .filter('team_id', 'in', 
+        supabase.from('teams').select('id').eq('tournament_id', tournament.id)
+      )
+      .maybeSingle()
 
-    if (existingTeam) {
-      // User is already in the tournament, just redirect them
+    if (existingMember) {
       return NextResponse.json({ message: 'Already joined', tournamentId: tournament.id }, { status: 200 })
     }
 
@@ -72,18 +73,33 @@ export async function POST(request: Request) {
 
     const teamName = profile?.username || user.email?.split('@')[0] || 'Unknown Player'
 
-    // 6. Insert into teams table
-    const { error: insertError } = await supabase
+    // 6. Transaction-like: Create team AND add user as member
+    // Note: In Self-Reg mode, we assume 1 player per team for now as per current logic, 
+    // but the schema now supports many.
+    const { data: team, error: teamError } = await supabase
       .from('teams')
       .insert({
         tournament_id: tournament.id,
         name: teamName,
-        captain_id: user.id,
+      })
+      .select('id')
+      .single()
+
+    if (teamError || !team) {
+      console.error('Insert team error:', teamError)
+      return NextResponse.json({ error: 'Failed to create team.' }, { status: 500 })
+    }
+
+    const { error: memberError } = await supabase
+      .from('team_members')
+      .insert({
+        team_id: team.id,
+        user_id: user.id
       })
 
-    if (insertError) {
-      console.error('Insert team error:', insertError)
-      return NextResponse.json({ error: 'Failed to join tournament bracket.' }, { status: 500 })
+    if (memberError) {
+      console.error('Insert member error:', memberError)
+      return NextResponse.json({ error: 'Failed to join team.' }, { status: 500 })
     }
 
     return NextResponse.json({ message: 'Successfully joined', tournamentId: tournament.id }, { status: 200 })

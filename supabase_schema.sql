@@ -76,9 +76,19 @@ create table if not exists teams (
   id            uuid primary key default uuid_generate_v4(),
   tournament_id uuid not null references tournaments (id) on delete cascade,
   name          text not null,
-  captain_id    uuid references profiles (id) on delete set null,
   seed          integer,
   created_at    timestamptz not null default now()
+);
+
+-- ============================================================
+-- team_members
+-- ============================================================
+create table if not exists team_members (
+  id            uuid primary key default uuid_generate_v4(),
+  team_id       uuid not null references teams (id) on delete cascade,
+  user_id       uuid not null references profiles (id) on delete cascade,
+  joined_at     timestamptz not null default now(),
+  unique(team_id, user_id)
 );
 
 -- ============================================================
@@ -139,6 +149,7 @@ create table if not exists transactions (
 alter table profiles     enable row level security;
 alter table tournaments  enable row level security;
 alter table teams        enable row level security;
+alter table team_members enable row level security;
 alter table matchups     enable row level security;
 alter table bets         enable row level security;
 alter table transactions enable row level security;
@@ -152,10 +163,22 @@ create policy "tournaments_select_all"  on tournaments for select using (true);
 create policy "tournaments_insert_host" on tournaments for insert with check ((select auth.uid()) = host_id);
 create policy "tournaments_update_host" on tournaments for update using ((select auth.uid()) = host_id);
 
--- teams: anyone can read; team captain or tournament host can modify
+-- teams: anyone can read; tournament host can modify
 create policy "teams_select_all"   on teams for select using (true);
 create policy "teams_insert_auth"  on teams for insert with check ((select auth.uid()) is not null);
-create policy "teams_update_owner" on teams for update using ((select auth.uid()) = captain_id);
+create policy "teams_modify_host"  on teams for all using (
+  (select auth.uid()) = (select host_id from tournaments where id = tournament_id)
+);
+
+-- team_members: anyone can read; members or host can modify
+create policy "team_members_select_all" on team_members for select using (true);
+create policy "team_members_insert_auth" on team_members for insert with check ((select auth.uid()) is not null);
+create policy "team_members_delete_member" on team_members for delete using (
+  (select auth.uid()) = user_id or 
+  (select auth.uid()) = (
+    select host_id from tournaments t join teams tm on t.id = tm.tournament_id where tm.id = team_id
+  )
+);
 
 -- matchups: anyone can read; host updates
 create policy "matchups_select_all"  on matchups for select using (true);

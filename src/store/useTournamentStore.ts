@@ -1,10 +1,15 @@
 import { create } from 'zustand'
 
+export type TeamMember = {
+  id: string
+  username: string
+  display_name: string | null
+}
+
 export type Team = {
   id: string
   name: string
-  p1: string
-  p2: string
+  members: TeamMember[]
 }
 
 export type MatchupNode = {
@@ -47,8 +52,7 @@ export const useTournamentStore = create<TournamentState>((set, get) => ({
     const newTeams = Array.from({ length: count }, (_, i) => ({
       id: `team-${i}`,
       name: `Team ${String.fromCharCode(65 + i)}`,
-      p1: '',
-      p2: '',
+      members: [],
     }))
 
     // Calculate total matchups for a perfect single-elimination bracket

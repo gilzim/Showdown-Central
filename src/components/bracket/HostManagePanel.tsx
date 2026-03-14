@@ -2,13 +2,20 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { Trophy, CheckCircle, Swords, ChevronRight, Save, Loader2, Users, Plus, Trash2, Edit2, X, Check, Shuffle, PlayCircle, XCircle, FlagTriangleRight } from 'lucide-react'
+import { Trophy, CheckCircle, Swords, ChevronRight, Save, Loader2, Users, Plus, Trash2, Edit2, X, Check, Shuffle, PlayCircle, XCircle, FlagTriangleRight, UserPlus, UserX, User } from 'lucide-react'
 import { PropBetsPanel } from '@/components/betting/PropBetsPanel'
 import { useUIStore } from '@/store/useUIStore'
+
+interface TeamMember {
+  id: string
+  username: string
+  display_name: string | null
+}
 
 interface Team {
   id: string
   name: string
+  members?: TeamMember[]
 }
 
 interface Matchup {
@@ -255,6 +262,67 @@ export default function HostManagePanel({
     }
   }
 
+  const handleAddMember = async (teamId: string, username: string) => {
+    if (!username.trim()) return
+    setIsProcessingTeam(true)
+    try {
+      // Find user by username
+      const { data: profile, error: pError } = await supabase
+        .from('profiles')
+        .select('id, username, display_name')
+        .eq('username', username)
+        .single()
+
+      if (pError || !profile) throw new Error('User not found')
+
+      // Check if already in this team
+      const existingTeam = teams.find(t => t.id === teamId)
+      if (existingTeam?.members?.some(m => m.id === profile.id)) {
+        throw new Error('User is already in this team')
+      }
+
+      // Add to team_members
+      const { error: mError } = await supabase
+        .from('team_members')
+        .insert({ team_id: teamId, user_id: profile.id })
+
+      if (mError) throw mError
+      showToast(`Added ${profile.username} to the team!`, 'success')
+    } catch (err: any) {
+      showToast(err.message, 'error')
+    } finally {
+      setIsProcessingTeam(false)
+    }
+  }
+
+  const handleRemoveMember = async (teamId: string, userId: string) => {
+    const confirmed = await showConfirm(
+      'Remove Member',
+      'Are you sure you want to remove this member from the team?',
+      'Remove Member',
+      'Cancel',
+      'danger',
+      'UserX'
+    )
+    if (!confirmed) return
+    
+    setIsProcessingTeam(true)
+    try {
+      const { error } = await supabase
+        .from('team_members')
+        .delete()
+        .eq('team_id', teamId)
+        .eq('user_id', userId)
+
+      if (error) throw error
+      showToast('Member removed', 'success')
+    } catch (err: any) {
+      showToast(err.message, 'error')
+    } finally {
+      setIsProcessingTeam(false)
+    }
+  }
+
   const getTeam = (id: string | null) => teams.find(t => t.id === id) ?? null
 
   const rounds = Array.from(new Set(matchups.map((m) => m.round))).sort((a, b) => a - b)
@@ -482,14 +550,17 @@ export default function HostManagePanel({
       {activeTab === 'participants' && (
         <div className="bg-slate-800/50 border border-slate-700/50 rounded-2xl shadow-xl overflow-hidden animate-in fade-in duration-300">
           <div className="p-6 border-b border-slate-700/50 flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <h2 className="text-xl font-bold text-white flex items-center gap-3">
-              <Users className="w-5 h-5 text-emerald-400" />
-              Manage Participants
-            </h2>
+            <div className="flex flex-col gap-1">
+              <h2 className="text-xl font-bold text-white flex items-center gap-3">
+                <Users className="w-5 h-5 text-emerald-400" />
+                Manage Participants
+              </h2>
+              <p className="text-xs text-slate-400 ml-8">All team members are equal participants.</p>
+            </div>
             <div className="flex gap-2">
               <input
                 type="text"
-                placeholder="Team/Player Name"
+                placeholder="New Team Name"
                 value={newTeamName}
                 onChange={e => setNewTeamName(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && handleAddTeam()}
@@ -501,60 +572,136 @@ export default function HostManagePanel({
                 className="bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white font-bold px-4 py-2 rounded-xl text-sm flex items-center gap-2 transition-all shadow-lg shadow-emerald-900/20"
               >
                 {isProcessingTeam ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
-                Add
+                Create Team
               </button>
             </div>
           </div>
 
           <div className="p-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {teams.map(team => (
-                <div key={team.id} className="group p-4 bg-slate-900/50 border border-slate-700 rounded-xl flex items-center justify-between hover:border-slate-500 transition-all">
-                  {editingTeam?.id === team.id ? (
-                    <div className="flex items-center gap-2 w-full">
-                      <input
-                        autoFocus
-                        value={editingTeam.name}
-                        onChange={e => setEditingTeam({ ...editingTeam, name: e.target.value })}
-                        onKeyDown={e => e.key === 'Enter' && handleUpdateTeam()}
-                        className="flex-1 bg-slate-800 border border-emerald-500 rounded px-2 py-1 text-white text-sm focus:outline-none"
-                      />
-                      <button onClick={handleUpdateTeam} className="text-emerald-400 hover:text-emerald-300"><Check className="w-4 h-4" /></button>
-                      <button onClick={() => setEditingTeam(null)} className="text-slate-400 hover:text-slate-300"><X className="w-4 h-4" /></button>
+                <div key={team.id} className="flex flex-col bg-slate-900/40 border border-slate-700/50 rounded-2xl overflow-hidden hover:border-slate-500/50 transition-all group">
+                  {/* Team Header */}
+                  <div className="p-4 bg-slate-800/30 border-b border-slate-700/50 flex items-center justify-between">
+                    {editingTeam?.id === team.id ? (
+                      <div className="flex items-center gap-2 flex-1">
+                        <input
+                          autoFocus
+                          value={editingTeam.name}
+                          onChange={e => setEditingTeam({ ...editingTeam, name: e.target.value })}
+                          onKeyDown={e => e.key === 'Enter' && handleUpdateTeam()}
+                          className="flex-1 bg-slate-800 border border-emerald-500 rounded-lg px-3 py-1 text-white text-sm focus:outline-none"
+                        />
+                        <button onClick={handleUpdateTeam} className="p-1 text-emerald-400 hover:text-emerald-300"><Check className="w-5 h-5" /></button>
+                        <button onClick={() => setEditingTeam(null)} className="p-1 text-slate-400 hover:text-slate-300"><X className="w-5 h-5" /></button>
+                      </div>
+                    ) : (
+                      <>
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center border border-emerald-500/20">
+                            <Users className="w-4 h-4 text-emerald-400" />
+                          </div>
+                          <div>
+                            <h3 className="text-white font-bold text-lg">{team.name}</h3>
+                            <p className="text-[10px] text-slate-500 font-mono uppercase">ID: {team.id.slice(0,8)}</p>
+                          </div>
+                        </div>
+                        <div className="flex gap-1">
+                          <button
+                            onClick={() => setEditingTeam({ id: team.id, name: team.name })}
+                            className="p-2 text-slate-400 hover:text-blue-400 hover:bg-blue-400/10 rounded-lg transition-all"
+                          >
+                            <Edit2 className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => handleDeleteTeam(team.id)}
+                            className="p-2 text-slate-400 hover:text-red-400 hover:bg-red-400/10 rounded-lg transition-all"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </>
+                    )}
+                  </div>
+
+                  {/* Team Body / Members */}
+                  <div className="p-4 flex-1">
+                    <div className="flex items-center justify-between mb-4">
+                      <h4 className="text-xs font-black text-slate-500 uppercase tracking-widest">Team Members</h4>
+                      <span className="text-[10px] px-2 py-0.5 bg-slate-800 text-slate-400 rounded-full border border-slate-700">
+                        {team.members?.length || 0} Members
+                      </span>
                     </div>
-                  ) : (
-                    <>
-                      <div className="flex flex-col min-w-0">
-                        <span className="text-white font-bold truncate">{team.name}</span>
-                        <span className="text-[10px] text-slate-500 font-mono uppercase">ID: {team.id.slice(0,8)}</span>
-                      </div>
-                      <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+
+                    <div className="space-y-2 mb-4">
+                      {team.members && team.members.length > 0 ? (
+                        team.members.map(member => (
+                          <div key={member.id} className="flex items-center justify-between p-2 rounded-lg bg-slate-800/40 border border-slate-700/30 group/member">
+                            <div className="flex items-center gap-3">
+                              <div className="w-7 h-7 rounded-full bg-slate-700 flex items-center justify-center overflow-hidden">
+                                <User className="w-4 h-4 text-slate-400" />
+                              </div>
+                              <div className="flex flex-col">
+                                <span className="text-sm font-semibold text-slate-200">{member.display_name || member.username}</span>
+                                <span className="text-[10px] text-slate-500">@{member.username}</span>
+                              </div>
+                            </div>
+                            <button
+                              onClick={() => handleRemoveMember(team.id, member.id)}
+                              className="p-1.5 text-slate-500 hover:text-red-400 hover:bg-red-400/10 rounded-md opacity-0 group-hover/member:opacity-100 transition-all"
+                              title="Remove Member"
+                            >
+                              <UserX className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        ))
+                      ) : (
+                        <div className="py-4 text-center text-slate-600 italic text-xs">No members in this team.</div>
+                      )}
+                    </div>
+
+                    <div className="mt-auto pt-4 border-t border-slate-800/50">
+                      <form 
+                        onSubmit={(e) => {
+                          e.preventDefault();
+                          const input = e.currentTarget.elements.namedItem('username') as HTMLInputElement;
+                          handleAddMember(team.id, input.value);
+                          input.value = '';
+                        }}
+                        className="flex gap-2"
+                      >
+                        <input
+                          name="username"
+                          type="text"
+                          placeholder="Add member by username..."
+                          className="flex-1 bg-slate-900 border border-slate-700/50 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-emerald-500/50 transition-all"
+                        />
                         <button
-                          onClick={() => setEditingTeam({ id: team.id, name: team.name })}
-                          className="p-1.5 text-slate-400 hover:text-blue-400 hover:bg-blue-400/10 rounded transition-all"
+                          type="submit"
+                          className="p-1.5 bg-slate-800 hover:bg-emerald-600 text-slate-400 hover:text-white rounded-lg border border-slate-700 hover:border-emerald-500 transition-all"
                         >
-                          <Edit2 className="w-4 h-4" />
+                          <UserPlus className="w-4 h-4" />
                         </button>
-                        <button
-                          onClick={() => handleDeleteTeam(team.id)}
-                          className="p-1.5 text-slate-400 hover:text-red-400 hover:bg-red-400/10 rounded transition-all"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </>
-                  )}
+                      </form>
+                    </div>
+                  </div>
                 </div>
               ))}
+              
               {teams.length === 0 && (
-                <div className="col-span-full py-12 text-center text-slate-500 italic">No participants added yet.</div>
+                <div className="col-span-full py-12 text-center flex flex-col items-center gap-4">
+                  <div className="w-16 h-16 rounded-full bg-slate-800 flex items-center justify-center">
+                    <Users className="w-8 h-8 text-slate-600" />
+                  </div>
+                  <div className="text-slate-500 italic">No participants added yet. Create a team to get started.</div>
+                </div>
               )}
             </div>
           </div>
 
           <div className="p-6 bg-slate-900/30 border-t border-slate-700/50 flex items-center justify-between">
             <div className="text-xs text-slate-500">
-              Total: <span className="font-bold text-slate-300">{teams.length}</span> Participants
+              Total: <span className="font-bold text-slate-300">{teams.length}</span> Teams
             </div>
             <button className="flex items-center gap-2 text-xs font-bold text-blue-400 hover:text-blue-300 transition-colors uppercase tracking-widest">
               <Shuffle className="w-3.5 h-3.5" />
