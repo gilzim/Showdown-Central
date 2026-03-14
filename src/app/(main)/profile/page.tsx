@@ -60,21 +60,36 @@ export default async function ProfilePage() {
 
   const tournamentHistory = [...hostedEntries, ...participantEntries]
 
-  const statusLabel: Record<string, string> = {
-    draft: 'Draft',
-    upcoming: 'Upcoming',
-    active: 'Live',
-    completed: 'Completed',
-    cancelled: 'Cancelled',
-  }
+  const STATUS_CONFIG = {
+    draft: {
+      label: 'Draft',
+      classes: 'bg-slate-700 text-slate-300',
+    },
+    upcoming: {
+      label: 'Upcoming',
+      classes: 'bg-blue-500/20 text-blue-400',
+    },
+    active: {
+      label: 'Live',
+      classes: 'bg-emerald-500/20 text-emerald-400',
+    },
+    completed: {
+      label: 'Completed',
+      classes: 'bg-purple-500/20 text-purple-400',
+    },
+    cancelled: {
+      label: 'Cancelled',
+      classes: 'bg-red-500/20 text-red-400',
+    },
+  } as const
 
-  const statusColor: Record<string, string> = {
-    draft: 'bg-slate-700 text-slate-300',
-    upcoming: 'bg-blue-500/20 text-blue-400',
-    active: 'bg-emerald-500/20 text-emerald-400',
-    completed: 'bg-purple-500/20 text-purple-400',
-    cancelled: 'bg-red-500/20 text-red-400',
-  }
+  const statusLabel: Record<string, string> = Object.fromEntries(
+    Object.entries(STATUS_CONFIG).map(([key, value]) => [key, value.label])
+  )
+
+  const statusColor: Record<string, string> = Object.fromEntries(
+    Object.entries(STATUS_CONFIG).map(([key, value]) => [key, value.classes])
+  )
 
   const roleColor: Record<string, string> = {
     'Host': 'bg-blue-500/20 text-blue-400',
