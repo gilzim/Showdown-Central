@@ -1,6 +1,6 @@
 import Link from "next/link";
-import TournamentCard from "@/components/tournament/TournamentCard";
 import { createClient } from "@/lib/supabase/server";
+import TournamentFilter from "@/components/tournament/TournamentFilter";
 
 export default async function TournamentsPage() {
   const supabase = await createClient();
@@ -45,15 +45,7 @@ export default async function TournamentsPage() {
         </Link>
       </div>
 
-      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-        {tournaments.length === 0 ? (
-          <p className="text-zinc-500 col-span-full">No tournaments found.</p>
-        ) : (
-          tournaments.map((t) => (
-            <TournamentCard key={t.id} {...t} />
-          ))
-        )}
-      </div>
+      <TournamentFilter tournaments={tournaments} />
     </div>
   );
 }

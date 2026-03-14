@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { Trophy, CheckCircle, Swords, ChevronRight, Save, Loader2, Users, Plus, Trash2, Edit2, X, Check, Shuffle } from 'lucide-react'
+import { Trophy, CheckCircle, Swords, ChevronRight, Save, Loader2, Users, Plus, Trash2, Edit2, X, Check, Shuffle, PlayCircle, XCircle, FlagTriangleRight } from 'lucide-react'
 import { PropBetsPanel } from '@/components/betting/PropBetsPanel'
 
 interface Team {
@@ -22,11 +22,14 @@ interface Matchup {
   status: 'pending' | 'active' | 'completed'
 }
 
+type TournamentStatus = 'draft' | 'upcoming' | 'active' | 'completed' | 'cancelled'
+
 interface HostManagePanelProps {
   tournamentId: string
   tournamentName: string
   initialTeams: Team[]
   initialMatchups: Matchup[]
+  initialStatus?: TournamentStatus
 }
 
 export default function HostManagePanel({
@@ -34,6 +37,7 @@ export default function HostManagePanel({
   tournamentName,
   initialTeams,
   initialMatchups,
+  initialStatus = 'draft',
 }: HostManagePanelProps) {
   const [activeTab, setActiveTab] = useState<'bracket' | 'participants' | 'bets'>('bracket')
   const [teams, setTeams] = useState<Team[]>(initialTeams)
@@ -42,6 +46,8 @@ export default function HostManagePanel({
   const [saving, setSaving] = useState<string | null>(null)
   const [advancing, setAdvancing] = useState<string | null>(null)
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null)
+  const [tournamentStatus, setTournamentStatus] = useState<TournamentStatus>(initialStatus)
+  const [updatingStatus, setUpdatingStatus] = useState(false)
   
   // Participant State
   const [newTeamName, setNewTeamName] = useState('')
@@ -105,6 +111,25 @@ export default function HostManagePanel({
   const showToast = (message: string, type: 'success' | 'error') => {
     setToast({ message, type })
     setTimeout(() => setToast(null), 3500)
+  }
+
+  const handleUpdateStatus = async (newStatus: TournamentStatus) => {
+    if (!confirm(`Set tournament status to "${newStatus}"?`)) return
+    setUpdatingStatus(true)
+    try {
+      const res = await fetch(`/api/tournaments/${tournamentId}/status`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: newStatus }),
+      })
+      if (!res.ok) throw new Error('Failed to update status')
+      setTournamentStatus(newStatus)
+      showToast(`Tournament status set to "${newStatus}".`, 'success')
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'An unexpected error occurred.', 'error')
+    } finally {
+      setUpdatingStatus(false)
+    }
   }
 
   const handleSaveScores = async (matchupId: string) => {
@@ -226,6 +251,65 @@ export default function HostManagePanel({
           {toast.message}
         </div>
       )}
+
+      {/* Tournament Status Management */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 p-5 bg-slate-800/50 border border-slate-700/50 rounded-2xl">
+        <div className="flex-1 flex items-center gap-3">
+          <span className="text-sm font-bold text-slate-400 uppercase tracking-widest">Status:</span>
+          <span className={`px-3 py-1 text-xs font-black uppercase rounded-lg border ${
+            tournamentStatus === 'active' ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/40' :
+            tournamentStatus === 'completed' ? 'bg-purple-500/20 text-purple-400 border-purple-500/40' :
+            tournamentStatus === 'cancelled' ? 'bg-red-500/20 text-red-400 border-red-500/40' :
+            tournamentStatus === 'upcoming' ? 'bg-blue-500/20 text-blue-400 border-blue-500/40' :
+            'bg-slate-700/50 text-slate-400 border-slate-600'
+          }`}>
+            {tournamentStatus === 'active' && <span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse mr-1.5" />}
+            {tournamentStatus}
+          </span>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {tournamentStatus === 'draft' && (
+            <button
+              onClick={() => handleUpdateStatus('upcoming')}
+              disabled={updatingStatus}
+              className="flex items-center gap-2 px-4 py-2 bg-blue-600/20 hover:bg-blue-600 text-blue-400 hover:text-white border border-blue-500/30 rounded-xl text-xs font-bold uppercase transition-all disabled:opacity-50"
+            >
+              <FlagTriangleRight className="w-3.5 h-3.5" />
+              Open Registration
+            </button>
+          )}
+          {(tournamentStatus === 'draft' || tournamentStatus === 'upcoming') && (
+            <button
+              onClick={() => handleUpdateStatus('active')}
+              disabled={updatingStatus}
+              className="flex items-center gap-2 px-4 py-2 bg-emerald-600/20 hover:bg-emerald-600 text-emerald-400 hover:text-white border border-emerald-500/30 rounded-xl text-xs font-bold uppercase transition-all disabled:opacity-50"
+            >
+              <PlayCircle className="w-3.5 h-3.5" />
+              Start Tournament
+            </button>
+          )}
+          {tournamentStatus === 'active' && (
+            <button
+              onClick={() => handleUpdateStatus('completed')}
+              disabled={updatingStatus}
+              className="flex items-center gap-2 px-4 py-2 bg-purple-600/20 hover:bg-purple-600 text-purple-400 hover:text-white border border-purple-500/30 rounded-xl text-xs font-bold uppercase transition-all disabled:opacity-50"
+            >
+              <CheckCircle className="w-3.5 h-3.5" />
+              Mark Complete
+            </button>
+          )}
+          {tournamentStatus !== 'cancelled' && tournamentStatus !== 'completed' && (
+            <button
+              onClick={() => handleUpdateStatus('cancelled')}
+              disabled={updatingStatus}
+              className="flex items-center gap-2 px-4 py-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 rounded-xl text-xs font-bold uppercase transition-all disabled:opacity-50"
+            >
+              <XCircle className="w-3.5 h-3.5" />
+              Cancel
+            </button>
+          )}
+        </div>
+      </div>
 
       {/* Tabs */}
       <div className="flex items-center gap-2 p-1 bg-slate-900/50 border border-slate-700/50 rounded-xl self-start">
