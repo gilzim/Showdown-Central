@@ -4,13 +4,14 @@ import { ArrowLeft, Trophy, PlusCircle, Swords, Clock, CheckCircle, XCircle } fr
 import Link from 'next/link'
 import HostSettingsPanel from '@/components/bracket/HostSettingsPanel'
 import TournamentBracket from '@/components/bracket/TournamentBracket'
+import { TOURNAMENT_STATUS_COLOR, TOURNAMENT_STATUS_LABEL, TournamentStatus } from '@/lib/tournamentStatus'
 
-const STATUS_CONFIG: Record<string, { label: string; color: string; icon: React.ReactNode }> = {
-  draft:     { label: 'Draft',     color: 'text-slate-400 bg-slate-700/50 border-slate-600',       icon: null },
-  upcoming:  { label: 'Upcoming',  color: 'text-blue-400 bg-blue-500/20 border-blue-500/40',       icon: <Clock className="w-3 h-3" /> },
-  active:    { label: 'Live',      color: 'text-emerald-400 bg-emerald-500/20 border-emerald-500/40', icon: <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" /> },
-  completed: { label: 'Completed', color: 'text-purple-400 bg-purple-500/20 border-purple-500/40', icon: <CheckCircle className="w-3 h-3" /> },
-  cancelled: { label: 'Cancelled', color: 'text-red-400 bg-red-500/20 border-red-500/40',         icon: <XCircle className="w-3 h-3" /> },
+const STATUS_ICONS: Record<TournamentStatus, React.ReactNode> = {
+  draft:     null,
+  upcoming:  <Clock className="w-3 h-3" />,
+  active:    <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />,
+  completed: <CheckCircle className="w-3 h-3" />,
+  cancelled: <XCircle className="w-3 h-3" />,
 }
 
 export default async function HostDashboard() {
@@ -52,7 +53,10 @@ export default async function HostDashboard() {
 
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
             {tournaments.map((t) => {
-              const cfg = STATUS_CONFIG[t.status] ?? STATUS_CONFIG.draft
+              const status = (t.status ?? 'draft') as TournamentStatus
+              const label = TOURNAMENT_STATUS_LABEL[status]
+              const color = TOURNAMENT_STATUS_COLOR[status]
+              const icon  = STATUS_ICONS[status]
               return (
                 <div
                   key={t.id}
@@ -63,9 +67,9 @@ export default async function HostDashboard() {
                       <Trophy className="w-4 h-4 text-yellow-400 shrink-0" />
                       <h3 className="font-bold text-white truncate">{t.name}</h3>
                     </div>
-                    <span className={`shrink-0 flex items-center gap-1.5 px-2 py-0.5 text-xs font-bold uppercase rounded-md border ${cfg.color}`}>
-                      {cfg.icon}
-                      {cfg.label}
+                    <span className={`shrink-0 flex items-center gap-1.5 px-2 py-0.5 text-xs font-bold uppercase rounded-md border ${color}`}>
+                      {icon}
+                      {label}
                     </span>
                   </div>
 
