@@ -20,19 +20,19 @@ export default async function ProfilePage() {
     .eq('id', user.id)
     .single()
 
-  // Fetch tournaments hosted by the user
-  const { data: hostedTournaments } = await supabase
-    .from('tournaments')
-    .select('id, name, status, ends_at, created_at')
-    .eq('host_id', user.id)
-    .order('created_at', { ascending: false })
-
-  // Fetch tournaments where the user participated as a team captain
-  const { data: captainTeams } = await supabase
-    .from('teams')
-    .select('id, name, tournament_id, tournaments(id, name, status, ends_at, created_at)')
-    .eq('captain_id', user.id)
-    .order('created_at', { ascending: false })
+  // Fetch tournaments hosted by the user and tournaments where the user participated as a team captain, in parallel
+  const [{ data: hostedTournaments }, { data: captainTeams }] = await Promise.all([
+    supabase
+      .from('tournaments')
+      .select('id, name, status, ends_at, created_at')
+      .eq('host_id', user.id)
+      .order('created_at', { ascending: false }),
+    supabase
+      .from('teams')
+      .select('id, name, tournament_id, tournaments(id, name, status, ends_at, created_at)')
+      .eq('captain_id', user.id)
+      .order('created_at', { ascending: false }),
+  ])
 
   const hostedEntries = (hostedTournaments ?? []).map((t) => ({
     id: t.id,
