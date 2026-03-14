@@ -20,6 +20,66 @@ export default async function ProfilePage() {
     .eq('id', user.id)
     .single()
 
+  // Fetch tournaments hosted by the user
+  const { data: hostedTournaments } = await supabase
+    .from('tournaments')
+    .select('id, name, status, ends_at, created_at')
+    .eq('host_id', user.id)
+    .order('created_at', { ascending: false })
+
+  // Fetch tournaments where the user participated as a team captain
+  const { data: captainTeams } = await supabase
+    .from('teams')
+    .select('id, name, tournament_id, tournaments(id, name, status, ends_at, created_at)')
+    .eq('captain_id', user.id)
+    .order('created_at', { ascending: false })
+
+  const hostedEntries = (hostedTournaments ?? []).map((t) => ({
+    id: t.id,
+    name: t.name,
+    status: t.status as string,
+    endsAt: t.ends_at as string | null,
+    role: 'Host' as const,
+    href: `/tournaments/${t.id}/manage`,
+  }))
+
+  // Build participant entries, excluding tournaments already listed as hosted
+  const hostedIds = new Set(hostedEntries.map((e) => e.id))
+  const participantEntries = (captainTeams ?? []).flatMap((team) => {
+    const t = Array.isArray(team.tournaments) ? team.tournaments[0] : team.tournaments
+    if (!t || hostedIds.has(t.id)) return []
+    return [{
+      id: t.id,
+      name: t.name,
+      status: t.status as string,
+      endsAt: (t.ends_at ?? null) as string | null,
+      role: `Captain (${team.name})` as string,
+      href: `/tournaments/${t.id}`,
+    }]
+  })
+
+  const tournamentHistory = [...hostedEntries, ...participantEntries]
+
+  const statusLabel: Record<string, string> = {
+    draft: 'Draft',
+    upcoming: 'Upcoming',
+    active: 'Live',
+    completed: 'Completed',
+    cancelled: 'Cancelled',
+  }
+
+  const statusColor: Record<string, string> = {
+    draft: 'bg-slate-700 text-slate-300',
+    upcoming: 'bg-blue-500/20 text-blue-400',
+    active: 'bg-emerald-500/20 text-emerald-400',
+    completed: 'bg-purple-500/20 text-purple-400',
+    cancelled: 'bg-red-500/20 text-red-400',
+  }
+
+  const roleColor: Record<string, string> = {
+    'Host': 'bg-blue-500/20 text-blue-400',
+  }
+
   return (
     <div className="w-full max-w-5xl mx-auto flex flex-col gap-8">
       <div className="flex items-center gap-4 mb-2">
@@ -62,19 +122,39 @@ export default async function ProfilePage() {
                  <Trophy className="w-5 h-5 text-blue-400" /> Tournament History
                </h3>
                
-               <div className="flex flex-col gap-4">
-                  <div className="flex items-center justify-between p-4 bg-slate-900/50 border border-slate-700 rounded-xl lg:flex-row flex-col gap-4">
-                     <div>
-                        <h4 className="font-bold text-slate-200">The Ultimate Showdown 2026</h4>
-                        <p className="text-sm text-slate-400 flex items-center gap-1 mt-1"><Calendar className="w-3 h-3" /> Hosted by you • Ended Mar 10</p>
-                     </div>
-                     <span className="px-3 py-1 bg-slate-700 text-slate-300 rounded-full text-xs font-bold uppercase w-fit">Host</span>
-                  </div>
-                  {/* Empty state hook for when DB query returns empty */}
+               {tournamentHistory.length === 0 ? (
                   <div className="text-center p-8 border-2 border-dashed border-slate-700 rounded-xl">
-                     <p className="text-slate-500">No other tournament history found.</p>
+                     <p className="text-slate-500">No tournament history found.</p>
                   </div>
-               </div>
+               ) : (
+                  <div className="flex flex-col gap-4">
+                     {tournamentHistory.map((entry) => (
+                        <Link
+                           key={`${entry.id}-${entry.role}`}
+                           href={entry.href}
+                           className="flex items-center justify-between p-4 bg-slate-900/50 border border-slate-700 hover:border-slate-500 rounded-xl lg:flex-row flex-col gap-4 transition-colors"
+                        >
+                           <div>
+                              <h4 className="font-bold text-slate-200">{entry.name}</h4>
+                              <p className="text-sm text-slate-400 flex items-center gap-1 mt-1">
+                                 <Calendar className="w-3 h-3" />
+                                 {entry.endsAt
+                                    ? `Ended ${new Date(entry.endsAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`
+                                    : statusLabel[entry.status] ?? entry.status}
+                              </p>
+                           </div>
+                           <div className="flex items-center gap-2 shrink-0">
+                              <span className={`px-2 py-0.5 rounded-md text-xs font-bold uppercase border ${statusColor[entry.status] ?? 'bg-slate-700 text-slate-300 border-slate-600'}`}>
+                                 {statusLabel[entry.status] ?? entry.status}
+                              </span>
+                              <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase w-fit ${roleColor[entry.role] ?? 'bg-slate-700 text-slate-300'}`}>
+                                 {entry.role}
+                              </span>
+                           </div>
+                        </Link>
+                     ))}
+                  </div>
+               )}
             </div>
          </div>
       </div>
