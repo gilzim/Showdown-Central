@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { ArrowLeft, User, Coins, Calendar, Trophy } from 'lucide-react'
 import Link from 'next/link'
+import { TOURNAMENT_STATUS_COLOR, TOURNAMENT_STATUS_LABEL, TournamentStatus } from '@/lib/tournamentStatus'
 
 export default async function ProfilePage() {
   const supabase = await createClient()
@@ -14,11 +15,84 @@ export default async function ProfilePage() {
     redirect('/login')
   }
 
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('*')
-    .eq('id', user.id)
-    .single()
+  // Run all three queries in parallel to minimise TTFB
+  const [
+    { data: profile },
+    { data: hostedTournaments, error: hostedError },
+    { data: captainTeams, error: captainError },
+  ] = await Promise.all([
+    supabase.from('profiles').select('*').eq('id', user.id).single(),
+    supabase
+      .from('tournaments')
+      .select('id, name, status, starts_at, ends_at, created_at')
+      .eq('host_id', user.id)
+      .order('created_at', { ascending: false }),
+    supabase
+      .from('teams')
+      .select('id, name, tournament_id, tournaments(id, name, status, starts_at, ends_at, created_at)')
+      .eq('captain_id', user.id)
+      .order('created_at', { ascending: false }),
+  ])
+
+  if (hostedError) console.error('[ProfilePage] hosted tournaments query failed:', hostedError.message)
+  if (captainError) console.error('[ProfilePage] captain teams query failed:', captainError.message)
+
+  const queryError = hostedError ?? captainError
+
+  const hostedEntries = (hostedTournaments ?? []).map((t) => ({
+    id: t.id,
+    name: t.name,
+    status: (t.status ?? 'draft') as TournamentStatus,
+    startsAt: (t.starts_at ?? null) as string | null,
+    endsAt: (t.ends_at ?? null) as string | null,
+    createdAt: t.created_at as string,
+    role: 'Host' as const,
+    href: `/tournaments/${t.id}/manage`,
+  }))
+
+  // Build participant entries, excluding hosted tournaments and deduplicating by tournament id
+  const hostedIds = new Set(hostedEntries.map((e) => e.id))
+  const seenParticipantTournamentIds = new Set<string>()
+  const participantEntries = (captainTeams ?? [])
+    .flatMap((team) => {
+      const t = Array.isArray(team.tournaments) ? team.tournaments[0] : team.tournaments
+      if (!t || hostedIds.has(t.id)) return []
+      return [{
+        id: t.id,
+        name: t.name,
+        status: (t.status ?? 'draft') as TournamentStatus,
+        startsAt: (t.starts_at ?? null) as string | null,
+        endsAt: (t.ends_at ?? null) as string | null,
+        createdAt: t.created_at as string,
+        role: `Captain (${team.name})` as string,
+        href: `/tournaments/${t.id}`,
+      }]
+    })
+    .filter((entry) => {
+      if (seenParticipantTournamentIds.has(entry.id)) return false
+      seenParticipantTournamentIds.add(entry.id)
+      return true
+    })
+
+  // Merge and sort by most recent first
+  const tournamentHistory = [...hostedEntries, ...participantEntries].sort(
+    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+  )
+
+  const roleColor: Record<string, string> = {
+    'Host': 'bg-blue-500/20 text-blue-400',
+  }
+
+  const formatDateLine = (entry: { status: TournamentStatus; startsAt: string | null; endsAt: string | null }) => {
+    const fmt = (d: string) =>
+      new Date(d).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
+    if (entry.status === 'completed' || entry.status === 'cancelled') {
+      return entry.endsAt ? `Ended ${fmt(entry.endsAt)}` : TOURNAMENT_STATUS_LABEL[entry.status]
+    }
+    if (entry.endsAt) return `Ends ${fmt(entry.endsAt)}`
+    if (entry.startsAt) return `Starts ${fmt(entry.startsAt)}`
+    return TOURNAMENT_STATUS_LABEL[entry.status]
+  }
 
   return (
     <div className="w-full max-w-5xl mx-auto flex flex-col gap-8">
@@ -61,20 +135,42 @@ export default async function ProfilePage() {
                <h3 className="text-xl font-bold flex items-center gap-2 mb-6">
                  <Trophy className="w-5 h-5 text-blue-400" /> Tournament History
                </h3>
-               
-               <div className="flex flex-col gap-4">
-                  <div className="flex items-center justify-between p-4 bg-slate-900/50 border border-slate-700 rounded-xl lg:flex-row flex-col gap-4">
-                     <div>
-                        <h4 className="font-bold text-slate-200">The Ultimate Showdown 2026</h4>
-                        <p className="text-sm text-slate-400 flex items-center gap-1 mt-1"><Calendar className="w-3 h-3" /> Hosted by you • Ended Mar 10</p>
-                     </div>
-                     <span className="px-3 py-1 bg-slate-700 text-slate-300 rounded-full text-xs font-bold uppercase w-fit">Host</span>
+
+               {queryError ? (
+                  <div className="text-center p-8 border-2 border-dashed border-red-800/40 rounded-xl">
+                     <p className="text-red-400">Could not load tournament history. Please try again later.</p>
                   </div>
-                  {/* Empty state hook for when DB query returns empty */}
+               ) : tournamentHistory.length === 0 ? (
                   <div className="text-center p-8 border-2 border-dashed border-slate-700 rounded-xl">
-                     <p className="text-slate-500">No other tournament history found.</p>
+                     <p className="text-slate-500">No tournament history found.</p>
                   </div>
-               </div>
+               ) : (
+                  <div className="flex flex-col gap-4">
+                     {tournamentHistory.map((entry) => (
+                        <Link
+                           key={`${entry.id}-${entry.role}`}
+                           href={entry.href}
+                           className="flex items-center justify-between p-4 bg-slate-900/50 border border-slate-700 hover:border-slate-500 rounded-xl lg:flex-row flex-col gap-4 transition-colors"
+                        >
+                           <div>
+                              <h4 className="font-bold text-slate-200">{entry.name}</h4>
+                              <p className="text-sm text-slate-400 flex items-center gap-1 mt-1">
+                                 <Calendar className="w-3 h-3" />
+                                 {formatDateLine(entry)}
+                              </p>
+                           </div>
+                           <div className="flex items-center gap-2 shrink-0">
+                              <span className={`px-2 py-0.5 rounded-md text-xs font-bold uppercase border ${TOURNAMENT_STATUS_COLOR[entry.status]}`}>
+                                 {TOURNAMENT_STATUS_LABEL[entry.status]}
+                              </span>
+                              <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase w-fit ${roleColor[entry.role] ?? 'bg-slate-700 text-slate-300'}`}>
+                                 {entry.role}
+                              </span>
+                           </div>
+                        </Link>
+                     ))}
+                  </div>
+               )}
             </div>
          </div>
       </div>
