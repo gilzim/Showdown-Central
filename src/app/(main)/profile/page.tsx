@@ -139,7 +139,9 @@ export default async function ProfilePage() {
                               <p className="text-sm text-slate-400 flex items-center gap-1 mt-1">
                                  <Calendar className="w-3 h-3" />
                                  {entry.endsAt
-                                    ? `Ended ${new Date(entry.endsAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`
+                                    ? (entry.status === 'completed' || entry.status === 'cancelled'
+                                       ? `Ended ${new Date(entry.endsAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`
+                                       : `Ends ${new Date(entry.endsAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`)
                                     : statusLabel[entry.status] ?? entry.status}
                               </p>
                            </div>
